@@ -16,27 +16,38 @@
  */
 
 function getPath() {
-    var jsFileLocation = $("script[src*=jquery]").attr("src");  // the js file path
-    return jsFileLocation.substr(0, jsFileLocation.search("/static/js/libs/jquery.min.js"));  // the js folder path
+    var jsFileLocation = $("script[src*=jquery]").attr("src"); // the js file path
+    return jsFileLocation.substr(
+        0,
+        jsFileLocation.search("/libs/jquery.min.js")
+    ); // the js folder path
 }
 
-function postButton(event, action, location=""){
+function postButton(event, action, location = "") {
     event.preventDefault();
-    var newForm = jQuery('<form>', {
-        "action": action,
-        'target': "_top",
-        'method': "post"
-    }).append(jQuery('<input>', {
-        'name': 'csrf_token',
-        'value': $("input[name=\'csrf_token\']").val(),
-        'type': 'hidden'
-    })).appendTo('body')
-    if(location !== "") {
-        newForm.append(jQuery('<input>', {
-            'name': 'location',
-            'value': location,
-            'type': 'hidden'
-        })).appendTo('body');
+    var newForm = jQuery("<form>", {
+        action: action,
+        target: "_top",
+        method: "post",
+    })
+        .append(
+            jQuery("<input>", {
+                name: "csrf_token",
+                value: $("input[name='csrf_token']").val(),
+                type: "hidden",
+            })
+        )
+        .appendTo("body");
+    if (location !== "") {
+        newForm
+            .append(
+                jQuery("<input>", {
+                    name: "location",
+                    value: location,
+                    type: "hidden",
+                })
+            )
+            .appendTo("body");
     }
     newForm.submit();
 }
@@ -49,22 +60,33 @@ function elementSorter(a, b) {
     return 0;
 }
 
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+        .register(getPath() + "/service-worker.js")
+        .then((reg) =>
+            console.log("Service Worker registered with scope:", reg.scope)
+        )
+        .catch((err) =>
+            console.error("Service Worker registration failed:", err)
+        );
+}
+
 // Generic control/related handler to show/hide fields based on a 'checkbox' value
 // e.g.
 //  <input type="checkbox" data-control="stuff-to-show">
 //  <div data-related="stuff-to-show">...</div>
-$(document).on("change", "input[type=\"checkbox\"][data-control]", function () {
+$(document).on("change", 'input[type="checkbox"][data-control]', function () {
     var $this = $(this);
     var name = $this.data("control");
     var showOrHide = $this.prop("checked");
 
-    $("[data-related=\"" + name + "\"]").each(function () {
+    $('[data-related="' + name + '"]').each(function () {
         $(this).toggle(showOrHide);
     });
 });
 
 // Generic control/related handler to show/hide fields based on a 'select' value
-$(document).on("change", "select[data-control]", function() {
+$(document).on("change", "select[data-control]", function () {
     var $this = $(this);
     var name = $this.data("control");
     var showOrHide = parseInt($this.val(), 10);
@@ -72,16 +94,20 @@ $(document).on("change", "select[data-control]", function() {
     for (var i = 0; i < $(this)[0].length; i++) {
         var element = parseInt($(this)[0][i].value, 10);
         if (element === showOrHide) {
-            $("[data-related^=" + name + "][data-related*=-" + element + "]").show();
+            $(
+                "[data-related^=" + name + "][data-related*=-" + element + "]"
+            ).show();
         } else {
-            $("[data-related^=" + name + "][data-related*=-" + element + "]").hide();
+            $(
+                "[data-related^=" + name + "][data-related*=-" + element + "]"
+            ).hide();
         }
     }
 });
 
 // Generic control/related handler to show/hide fields based on a 'select' value
 // this one is made to show all values if select value is not 0
-$(document).on("change", "select[data-controlall]", function() {
+$(document).on("change", "select[data-controlall]", function () {
     var $this = $(this);
     var name = $this.data("controlall");
     var showOrHide = parseInt($this.val(), 10);
@@ -92,45 +118,46 @@ $(document).on("change", "select[data-controlall]", function() {
     }
 });
 
-
 $(document).on("click", ".postAction", function (event) {
     // $(".sendbutton").on("click", "body", function(event) {
-    postButton(event, $(this).data('action'));
+    postButton(event, $(this).data("action"));
 });
-
 
 // Syntax has to be bind not on, otherwise problems with firefox
 $(".container-fluid").bind("dragenter dragover", function () {
-    if($("#btn-upload").length && !$('body').hasClass('shelforder')) {
-        $(this).css('background', '#e6e6e6');
+    if ($("#btn-upload").length && !$("body").hasClass("shelforder")) {
+        $(this).css("background", "#e6e6e6");
     }
     return false;
 });
 
 // Syntax has to be bind not on, otherwise problems with firefox
 $(".container-fluid").bind("dragleave", function () {
-    if($("#btn-upload").length && !$('body').hasClass('shelforder')) {
-        $(this).css('background', '');
+    if ($("#btn-upload").length && !$("body").hasClass("shelforder")) {
+        $(this).css("background", "");
     }
     return false;
 });
 
 // Syntax has to be bind not on, otherwise problems with firefox
-$(".container-fluid").bind('drop', function (e) {
-    e.preventDefault()
+$(".container-fluid").bind("drop", function (e) {
+    e.preventDefault();
     e.stopPropagation();
-    if($("#btn-upload").length) {
+    if ($("#btn-upload").length) {
         var files = e.originalEvent.dataTransfer.files;
         var test = $("#btn-upload")[0].accept;
-        $(this).css('background', '');
+        $(this).css("background", "");
         const dt = new DataTransfer();
         jQuery.each(files, function (index, item) {
-            if (test.indexOf(item.name.substr(item.name.lastIndexOf('.'))) !== -1) {
+            if (
+                test.indexOf(item.name.substr(item.name.lastIndexOf("."))) !==
+                -1
+            ) {
                 dt.items.add(item);
             }
         });
         if (dt.files.length) {
-            if($("#btn-upload-format").length) {
+            if ($("#btn-upload-format").length) {
                 $("#btn-upload-format")[0].files = dt.files;
                 $("#form-upload-format").submit();
             } else {
@@ -141,21 +168,20 @@ $(".container-fluid").bind('drop', function (e) {
     }
 });
 
-$("#btn-upload").change(function() {
+$("#btn-upload").change(function () {
     $("#form-upload").submit();
 });
 
-$("#btn-upload-format").change(function() {
+$("#btn-upload-format").change(function () {
     $("#form-upload-format").submit();
 });
-
 
 $("#form-upload").uploadprogress({
     redirect_url: getPath() + "/",
     uploadedMsg: $("#form-upload").data("message"),
     modalTitle: $("#form-upload").data("title"),
     modalFooter: $("#form-upload").data("footer"),
-    modalTitleFailed: $("#form-upload").data("failed")
+    modalTitleFailed: $("#form-upload").data("failed"),
 });
 
 $("#form-upload-format").uploadprogress({
@@ -163,64 +189,67 @@ $("#form-upload-format").uploadprogress({
     uploadedMsg: $("#form-upload-format").data("message"),
     modalTitle: $("#form-upload-format").data("title"),
     modalFooter: $("#form-upload-format").data("footer"),
-    modalTitleFailed: $("#form-upload-format").data("failed")
+    modalTitleFailed: $("#form-upload-format").data("failed"),
 });
 
-$(document).ready(function() {
-    var inp = $('#query').first()
+$(document).ready(function () {
+    var inp = $("#query").first();
     if (inp.length) {
-        var val = inp.val()
+        var val = inp.val();
         if (val.length) {
-            inp.val('').blur().focus().val(val)
+            inp.val("").blur().focus().val(val);
         }
     }
 });
 
-$(".session").click(function() {
+$(".session").click(function () {
     window.sessionStorage.setItem("back", window.location.pathname);
     window.sessionStorage.setItem("search", window.location.search);
 });
 
-$("#back").click(function() {
-   var loc = sessionStorage.getItem("back");
-   var param = sessionStorage.getItem("search");
-   if (!loc) {
-       loc = $(this).data("back");
-   }
-   sessionStorage.removeItem("back");
-   sessionStorage.removeItem("search");
-   if (param === null) {
-       param = "";
-   }
-   window.location.href = loc + param;
-
+$("#back").click(function () {
+    var loc = sessionStorage.getItem("back");
+    var param = sessionStorage.getItem("search");
+    if (!loc) {
+        loc = $(this).data("back");
+    }
+    sessionStorage.removeItem("back");
+    sessionStorage.removeItem("search");
+    if (param === null) {
+        param = "";
+    }
+    window.location.href = loc + param;
 });
 
 function confirmDialog(id, dialogid, dataValue, yesFn, noFn) {
     var $confirm = $("#" + dialogid);
-    $("#btnConfirmYes-"+ dialogid).off('click').click(function () {
-        yesFn(dataValue);
-        $confirm.modal("hide");
-    });
-    $("#btnConfirmNo-"+ dialogid).off('click').click(function () {
-        if (typeof noFn !== 'undefined') {
-            noFn(dataValue);
-        }
-        $confirm.modal("hide");
-    });
+    $("#btnConfirmYes-" + dialogid)
+        .off("click")
+        .click(function () {
+            yesFn(dataValue);
+            $confirm.modal("hide");
+        });
+    $("#btnConfirmNo-" + dialogid)
+        .off("click")
+        .click(function () {
+            if (typeof noFn !== "undefined") {
+                noFn(dataValue);
+            }
+            $confirm.modal("hide");
+        });
     $.ajax({
-        method:"post",
+        method: "post",
         dataType: "json",
         url: getPath() + "/ajax/loaddialogtexts/" + id,
         success: function success(data) {
-            $("#header-"+ dialogid).html(data.header);
-            $("#text-"+ dialogid).html(data.main);
-        }
+            $("#header-" + dialogid).html(data.header);
+            $("#text-" + dialogid).html(data.main);
+        },
     });
-    $confirm.modal('show');
+    $confirm.modal("show");
 }
 
-$("#delete_confirm").click(function(event) {
+$("#delete_confirm").click(function (event) {
     //get data-id attribute of the clicked element
     var deleteId = $(this).data("delete-id");
     var bookFormat = $(this).data("delete-format");
@@ -231,22 +260,34 @@ $("#delete_confirm").click(function(event) {
         if (ajaxResponse) {
             path = getPath() + "/ajax/delete/" + deleteId;
             $.ajax({
-                method:"post",
+                method: "post",
                 url: path,
                 timeout: 900,
-                success:function(data) {
-                    data.forEach(function(item) {
+                success: function (data) {
+                    data.forEach(function (item) {
                         if (!jQuery.isEmptyObject(item)) {
                             if (item.format != "") {
-                                $("button[data-delete-format='"+item.format+"']").addClass('hidden');
+                                $(
+                                    "button[data-delete-format='" +
+                                        item.format +
+                                        "']"
+                                ).addClass("hidden");
                             }
-                            $( ".navbar" ).after( '<div class="row-fluid text-center" >' +
-                                '<div id="flash_'+item.type+'" class="alert alert-'+item.type+'">'+item.message+'</div>' +
-                                '</div>');
+                            $(".navbar").after(
+                                '<div class="row-fluid text-center" >' +
+                                    '<div id="flash_' +
+                                    item.type +
+                                    '" class="alert alert-' +
+                                    item.type +
+                                    '">' +
+                                    item.message +
+                                    "</div>" +
+                                    "</div>"
+                            );
                         }
                     });
                     $("#books-table").bootstrapTable("refresh");
-                }
+                },
             });
         } else {
             var loc = sessionStorage.getItem("back");
@@ -254,29 +295,35 @@ $("#delete_confirm").click(function(event) {
                 loc = $(this).data("back");
             }
             sessionStorage.removeItem("back");
-            postButton(event, getPath() + "/delete/" + deleteId, location=loc);
+            postButton(
+                event,
+                getPath() + "/delete/" + deleteId,
+                (location = loc)
+            );
         }
     }
 });
 
 //triggered when modal is about to be shown
-$("#deleteModal").on("show.bs.modal", function(e) {
+$("#deleteModal").on("show.bs.modal", function (e) {
     //get data-id attribute of the clicked element and store in button
     var bookId = $(e.relatedTarget).data("delete-id");
     var bookfomat = $(e.relatedTarget).data("delete-format");
     if (bookfomat) {
-        $("#book_format").removeClass('hidden');
-        $("#book_complete").addClass('hidden');
+        $("#book_format").removeClass("hidden");
+        $("#book_complete").addClass("hidden");
     } else {
-        $("#book_complete").removeClass('hidden');
-        $("#book_format").addClass('hidden');
+        $("#book_complete").removeClass("hidden");
+        $("#book_format").addClass("hidden");
     }
     $(e.currentTarget).find("#delete_confirm").data("delete-id", bookId);
     $(e.currentTarget).find("#delete_confirm").data("delete-format", bookfomat);
-    $(e.currentTarget).find("#delete_confirm").data("ajax", $(e.relatedTarget).data("ajax"));
+    $(e.currentTarget)
+        .find("#delete_confirm")
+        .data("ajax", $(e.relatedTarget).data("ajax"));
 });
 
-$(function() {
+$(function () {
     var updateTimerID;
     var updateText;
 
@@ -288,11 +335,14 @@ $(function() {
     // equip all post requests with csrf_token
     var csrftoken = $("input[name='csrf_token']").val();
     $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
-            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", csrftoken)
+        beforeSend: function (xhr, settings) {
+            if (
+                !/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) &&
+                !this.crossDomain
+            ) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
             }
-        }
+        },
     });
 
     function restartTimer() {
@@ -333,7 +383,7 @@ $(function() {
                     cleanUp();
                 }
             },
-            timeout: 2000
+            timeout: 2000,
         });
     }
 
@@ -344,68 +394,84 @@ $(function() {
             data: {
                 path: path,
                 folder: folder,
-                filter: filt
+                filter: filt,
             },
             url: getPath() + request_path,
             success: function success(data) {
-                if ($("#element_selected").text() ==="") {
+                if ($("#element_selected").text() === "") {
                     $("#element_selected").text(data.cwd);
                 }
                 $("#file_table > tbody > tr").each(function () {
                     if ($(this).attr("id") !== "parent") {
                         $(this).closest("tr").remove();
                     } else {
-                        if(data.absolute && data.parentdir !== "") {
-                           $(this)[0].attributes['data-path'].value  = data.parentdir;
+                        if (data.absolute && data.parentdir !== "") {
+                            $(this)[0].attributes["data-path"].value =
+                                data.parentdir;
                         } else {
-                            $(this)[0].attributes['data-path'].value  = "..";
+                            $(this)[0].attributes["data-path"].value = "..";
                         }
                     }
                 });
                 if (data.parentdir !== "") {
-                    $("#parent").removeClass('hidden')
+                    $("#parent").removeClass("hidden");
                 } else {
-                    $("#parent").addClass('hidden')
+                    $("#parent").addClass("hidden");
                 }
-                data.files.forEach(function(entry) {
-                    if(entry.type === "dir") {
-                        var type = "<span class=\"glyphicon glyphicon-folder-close\"></span>";
-                } else {
-                    var type = "";
-                }
-                    $("<tr class=\"tr-clickable\" data-type=\"" + entry.type + "\" data-path=\"" +
-                        entry.fullpath + "\"><td>" + type + "</td><td>" + entry.name + "</td><td>" +
-                        entry.size + "</td></tr>").appendTo($("#file_table"));
+                data.files.forEach(function (entry) {
+                    if (entry.type === "dir") {
+                        var type =
+                            '<span class="glyphicon glyphicon-folder-close"></span>';
+                    } else {
+                        var type = "";
+                    }
+                    $(
+                        '<tr class="tr-clickable" data-type="' +
+                            entry.type +
+                            '" data-path="' +
+                            entry.fullpath +
+                            '"><td>' +
+                            type +
+                            "</td><td>" +
+                            entry.name +
+                            "</td><td>" +
+                            entry.size +
+                            "</td></tr>"
+                    ).appendTo($("#file_table"));
                 });
             },
-            timeout: 2000
+            timeout: 2000,
         });
     }
 
     $(".discover .row").isotope({
         // options
-        itemSelector : ".book",
-        layoutMode : "fitRows"
+        itemSelector: ".book",
+        layoutMode: "fitRows",
     });
 
     if ($(".load-more").length && $(".next").length) {
         var $loadMore = $(".load-more .row").infiniteScroll({
             debug: false,
             // selector for the paged navigation (it will be hidden)
-            path : ".next",
+            path: ".next",
             // selector for the NEXT link (to page 2)
-            append : ".load-more .book"
+            append: ".load-more .book",
             //animate      : true, # ToDo: Reenable function
             //extraScrollPx: 300
         });
-        $loadMore.on( "append.infiniteScroll", function( event, response, path, data ) {
-            $(".pagination").addClass("hidden").html(() => $(response).find(".pagination").html());
-            if ($("body").hasClass("blur")) {
-                $(" a:not(.dropdown-toggle) ")
-                  .removeAttr("data-toggle");
+        $loadMore.on(
+            "append.infiniteScroll",
+            function (event, response, path, data) {
+                $(".pagination")
+                    .addClass("hidden")
+                    .html(() => $(response).find(".pagination").html());
+                if ($("body").hasClass("blur")) {
+                    $(" a:not(.dropdown-toggle) ").removeAttr("data-toggle");
+                }
+                $(".load-more .row").isotope("appended", $(data), null);
             }
-            $(".load-more .row").isotope( "appended", $(data), null );
-        });
+        );
 
         // fix for infinite scroll on CaliBlur Theme (#981)
         if ($("body").hasClass("blur")) {
@@ -415,38 +481,42 @@ $(function() {
                     $(this)[0].scrollHeight
                 ) {
                     $loadMore.infiniteScroll("loadNextPage");
-                    window.history.replaceState({}, null, $loadMore.infiniteScroll("getAbsolutePath"));
+                    window.history.replaceState(
+                        {},
+                        null,
+                        $loadMore.infiniteScroll("getAbsolutePath")
+                    );
                 }
             });
         }
     }
 
-    $("#restart").click(function() {
+    $("#restart").click(function () {
         $.ajax({
-            method:"post",
+            method: "post",
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             url: getPath() + "/shutdown",
-            data: JSON.stringify({"parameter":0}),
+            data: JSON.stringify({ parameter: 0 }),
             success: function success() {
                 $("#spinner").show();
                 setTimeout(restartTimer, 3000);
-            }
+            },
         });
     });
-    $("#shutdown").click(function() {
+    $("#shutdown").click(function () {
         $.ajax({
-            method:"post",
+            method: "post",
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             url: getPath() + "/shutdown",
-            data: JSON.stringify({"parameter":1}),
+            data: JSON.stringify({ parameter: 1 }),
             success: function success(data) {
                 return alert(data.text);
-            }
+            },
         });
     });
-    $("#check_for_update").click(function() {
+    $("#check_for_update").click(function () {
         var $this = $(this);
         var buttonText = $this.html();
         $this.html("...");
@@ -471,10 +541,17 @@ $(function() {
                         $("#perform_update").removeClass("hidden");
                         $("#update_info")
                             .removeClass("hidden")
-                            .find("span").html(data.commit);
+                            .find("span")
+                            .html(data.commit);
 
-                        data.history.forEach(function(entry) {
-                            $("<tr><td>" + entry[0] + "</td><td>" + entry[1] + "</td></tr>").appendTo($("#update_table"));
+                        data.history.forEach(function (entry) {
+                            $(
+                                "<tr><td>" +
+                                    entry[0] +
+                                    "</td><td>" +
+                                    entry[1] +
+                                    "</td></tr>"
+                            ).appendTo($("#update_table"));
                         });
                         cssClass = "alert-warning";
                     } else {
@@ -484,44 +561,52 @@ $(function() {
                     cssClass = "alert-danger";
                 }
 
-                message = "<div id=\"message\" class=\"alert " + cssClass
-                    + " fade in\"><a href=\"#\" class=\"close\" data-dismiss=\"alert\">&times;</a>"
-                    + data.message + "</div>";
+                message =
+                    '<div id="message" class="alert ' +
+                    cssClass +
+                    ' fade in"><a href="#" class="close" data-dismiss="alert">&times;</a>' +
+                    data.message +
+                    "</div>";
 
                 $(message).insertAfter($("#update_table"));
-            }
+            },
         });
     });
-    $("#admin_refresh_cover_cache").click(function() {
-        confirmDialog("admin_refresh_cover_cache", "GeneralChangeModal", 0, function () {
-            $.ajax({
-                method:"post",
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-                url: getPath() + "/ajax/updateThumbnails",
-            });
-        });
+    $("#admin_refresh_cover_cache").click(function () {
+        confirmDialog(
+            "admin_refresh_cover_cache",
+            "GeneralChangeModal",
+            0,
+            function () {
+                $.ajax({
+                    method: "post",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    url: getPath() + "/ajax/updateThumbnails",
+                });
+            }
+        );
     });
 
-    $("#restart_database").click(function() {
+    $("#restart_database").click(function () {
         $("#DialogHeader").addClass("hidden");
         $("#DialogFinished").addClass("hidden");
         $("#DialogContent").html("");
         $("#spinner2").show();
         $.ajax({
-            method:"post",
+            method: "post",
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             url: getPath() + "/shutdown",
-            data: JSON.stringify({"parameter":2}),
+            data: JSON.stringify({ parameter: 2 }),
             success: function success(data) {
                 $("#spinner2").hide();
                 $("#DialogContent").html(data.text);
                 $("#DialogFinished").removeClass("hidden");
-            }
+            },
         });
     });
-    $("#metadata_backup").click(function() {
+    $("#metadata_backup").click(function () {
         $("#DialogHeader").addClass("hidden");
         $("#DialogFinished").addClass("hidden");
         $("#DialogContent").html("");
@@ -535,10 +620,10 @@ $(function() {
                 $("#spinner2").hide();
                 $("#DialogContent").html(data.text);
                 $("#DialogFinished").removeClass("hidden");
-            }
+            },
         });
     });
-    $("#perform_update").click(function() {
+    $("#perform_update").click(function () {
         $("#DialogHeader").removeClass("hidden");
         $("#spinner2").show();
         $.ajax({
@@ -550,7 +635,7 @@ $(function() {
                 updateText = data.text;
                 $("#DialogContent").html(updateText[data.status]);
                 updateTimerID = setInterval(updateTimer, 2000);
-            }
+            },
         });
     });
 
@@ -560,56 +645,58 @@ $(function() {
     $("select[data-controlall]").trigger("change");
 
     $("#bookDetailsModal")
-        .on("show.bs.modal", function(e) {
+        .on("show.bs.modal", function (e) {
             $("#flash_danger").remove();
             $("#flash_success").remove();
             var $modalBody = $(this).find(".modal-body");
 
             // Prevent static assets from loading multiple times
-            var useCache = function(options) {
+            var useCache = function (options) {
                 options.async = true;
                 options.cache = true;
             };
             preFilters.add(useCache);
 
-            $.get(e.relatedTarget.href).done(function(content) {
+            $.get(e.relatedTarget.href).done(function (content) {
                 $modalBody.html(content);
                 preFilters.remove(useCache);
                 $("#back").remove();
             });
         })
-        .on("hidden.bs.modal", function() {
+        .on("hidden.bs.modal", function () {
             $(this).find(".modal-body").html("...");
         });
 
     $("#modal_kobo_token")
-        .on("show.bs.modal", function(e) {
-            $(e.relatedTarget).one('focus', function(e){$(this).blur();});
+        .on("show.bs.modal", function (e) {
+            $(e.relatedTarget).one("focus", function (e) {
+                $(this).blur();
+            });
             var $modalBody = $(this).find(".modal-body");
 
             // Prevent static assets from loading multiple times
-            var useCache = function(options) {
+            var useCache = function (options) {
                 options.async = true;
                 options.cache = true;
             };
             preFilters.add(useCache);
 
-            $.get(e.relatedTarget.href).done(function(content) {
+            $.get(e.relatedTarget.href).done(function (content) {
                 $modalBody.html(content);
                 preFilters.remove(useCache);
             });
         })
-        .on("hidden.bs.modal", function() {
+        .on("hidden.bs.modal", function () {
             $(this).find(".modal-body").html("...");
             $("#config_delete_kobo_token").show();
             $("#kobo_full_sync").show();
         });
 
-    $("#config_delete_kobo_token").click(function() {
+    $("#config_delete_kobo_token").click(function () {
         confirmDialog(
-            $(this).attr('id'),
+            $(this).attr("id"),
             "GeneralDeleteModal",
-            $(this).data('value'),
+            $(this).data("value"),
             function (value) {
                 $.ajax({
                     method: "post",
@@ -621,7 +708,7 @@ $(function() {
         );
     });
 
-    $("#toggle_order_shelf").click(function() {
+    $("#toggle_order_shelf").click(function () {
         $("#toggle_order_shelf").toggleClass("dummy");
         $("#new").toggleClass("disabled");
         $("#old").toggleClass("disabled");
@@ -633,29 +720,34 @@ $(function() {
         $("#pub_old").toggleClass("disabled");
         $("#shelf_new").toggleClass("disabled");
         $("#shelf_old").toggleClass("disabled");
-        var alternative_text = $("#toggle_order_shelf").data('alt-text');
+        var alternative_text = $("#toggle_order_shelf").data("alt-text");
         var status = $("#toggle_order_shelf").hasClass("dummy") ? "on" : "off";
-        $("#toggle_order_shelf").data('alt-text', $("#toggle_order_shelf").html());
+        $("#toggle_order_shelf").data(
+            "alt-text",
+            $("#toggle_order_shelf").html()
+        );
         $("#toggle_order_shelf").html(alternative_text);
 
         $.ajax({
-            method:"post",
+            method: "post",
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             url: getPath() + "/ajax/view",
-            data: "{\"shelf\": {\"man\": \"" + status + "\"}}",
+            data: '{"shelf": {"man": "' + status + '"}}',
         });
     });
 
-    $("#btndeluser").click(function() {
+    $("#btndeluser").click(function () {
         confirmDialog(
-            $(this).attr('id'),
+            $(this).attr("id"),
             "GeneralDeleteModal",
-            $(this).data('value'),
-            function(value){
-                var subform = $('#user_submit').closest("form");
-                subform.submit(function(eventObj) {
-                    $(this).append('<input type="hidden" name="delete" value="True" />');
+            $(this).data("value"),
+            function (value) {
+                var subform = $("#user_submit").closest("form");
+                subform.submit(function (eventObj) {
+                    $(this).append(
+                        '<input type="hidden" name="delete" value="True" />'
+                    );
                     return true;
                 });
                 subform.submit();
@@ -663,74 +755,102 @@ $(function() {
         );
     });
 
-    $("#kobo_full_sync").click(function() {
+    $("#kobo_full_sync").click(function () {
         confirmDialog(
-           "btnfullsync",
+            "btnfullsync",
             "GeneralDeleteModal",
-            $(this).data('value'),
-            function(userid) {
+            $(this).data("value"),
+            function (userid) {
                 if (userid) {
-                    path = getPath() + "/ajax/fullsync/" + userid
+                    path = getPath() + "/ajax/fullsync/" + userid;
                 } else {
-                    path = getPath() + "/ajax/fullsync"
+                    path = getPath() + "/ajax/fullsync";
                 }
                 $.ajax({
-                    method:"post",
+                    method: "post",
                     url: path,
                     timeout: 900,
-                    success:function(data) {
-                        data.forEach(function(item) {
+                    success: function (data) {
+                        data.forEach(function (item) {
                             if (!jQuery.isEmptyObject(item)) {
-                                $( ".navbar" ).after( '<div class="row-fluid text-center" >' +
-                                    '<div id="flash_'+item.type+'" class="alert alert-'+item.type+'">'+item.message+'</div>' +
-                                    '</div>');
+                                $(".navbar").after(
+                                    '<div class="row-fluid text-center" >' +
+                                        '<div id="flash_' +
+                                        item.type +
+                                        '" class="alert alert-' +
+                                        item.type +
+                                        '">' +
+                                        item.message +
+                                        "</div>" +
+                                        "</div>"
+                                );
                             }
                         });
-                    }
+                    },
                 });
             }
         );
     });
 
-    $("#user_submit").click(function() {
+    $("#user_submit").click(function () {
         this.closest("form").submit();
     });
 
     function handle_response(data) {
         if (!jQuery.isEmptyObject(data)) {
             data.forEach(function (item) {
-                $(".navbar").after('<div class="row-fluid text-center">' +
-                    '<div id="flash_' + item.type + '" class="alert alert-' + item.type + '">' + item.message + '</div>' +
-                    '</div>');
+                $(".navbar").after(
+                    '<div class="row-fluid text-center">' +
+                        '<div id="flash_' +
+                        item.type +
+                        '" class="alert alert-' +
+                        item.type +
+                        '">' +
+                        item.message +
+                        "</div>" +
+                        "</div>"
+                );
             });
         }
     }
 
-    $('.collapse').on('shown.bs.collapse', function(){
-        $(this).parent().find(".glyphicon-plus").removeClass("glyphicon-plus").addClass("glyphicon-minus");
-    }).on('hidden.bs.collapse', function(){
-    $(this).parent().find(".glyphicon-minus").removeClass("glyphicon-minus").addClass("glyphicon-plus");
-    });
+    $(".collapse")
+        .on("shown.bs.collapse", function () {
+            $(this)
+                .parent()
+                .find(".glyphicon-plus")
+                .removeClass("glyphicon-plus")
+                .addClass("glyphicon-minus");
+        })
+        .on("hidden.bs.collapse", function () {
+            $(this)
+                .parent()
+                .find(".glyphicon-minus")
+                .removeClass("glyphicon-minus")
+                .addClass("glyphicon-plus");
+        });
 
     function changeDbSettings() {
-        $("#db_submit").closest('form').submit();
+        $("#db_submit").closest("form").submit();
     }
 
-    $("#db_submit").click(function(e) {
+    $("#db_submit").click(function (e) {
         e.preventDefault();
         e.stopPropagation();
         this.blur();
         $.ajax({
-            method:"post",
+            method: "post",
             dataType: "json",
             url: getPath() + "/ajax/simulatedbchange",
-            data: {config_calibre_dir: $("#config_calibre_dir").val(), csrf_token: $("input[name='csrf_token']").val()},
+            data: {
+                config_calibre_dir: $("#config_calibre_dir").val(),
+                csrf_token: $("input[name='csrf_token']").val(),
+            },
             success: function success(data) {
-                if ( !data.valid ) {
-                    $("#InvalidDialog").modal('show');
-                }
-                else{
-                    if ( data.change ) {
+                if (!data.valid) {
+                    $("#InvalidDialog").modal("show");
+                } else {
+                    if (data.change) {
                         confirmDialog(
                             "db_submit",
                             "GeneralChangeModal",
@@ -738,76 +858,85 @@ $(function() {
                             changeDbSettings
                         );
                     } else {
-                    changeDbSettings();
-                   }
+                        changeDbSettings();
+                    }
                 }
-            }
+            },
         });
     });
 
-    $("#config_submit").click(function(e) {
+    $("#config_submit").click(function (e) {
         e.preventDefault();
         e.stopPropagation();
         this.blur();
-        window.scrollTo({top: 0, behavior: 'smooth'});
+        window.scrollTo({ top: 0, behavior: "smooth" });
         var request_path = "/admin/ajaxconfig";
         $("#flash_success").remove();
         $("#flash_danger").remove();
-        $.post(getPath() + request_path, $(this).closest("form").serialize(), function(data) {
-            $('#config_upload_formats').val(data.config_upload);
-            if(data.reboot) {
-                $("#spinning_success").show();
-                var rebootInterval = setInterval(function(){
-                    $.get({
-                        url:getPath() + "/admin/alive",
-                        success: function (d, statusText, xhr) {
-                            if (xhr.status < 400) {
-                                $("#spinning_success").hide();
-                                clearInterval(rebootInterval);
-                                if (data.result) {
-                                    handle_response(data.result);
-                                    data.result = "";
+        $.post(
+            getPath() + request_path,
+            $(this).closest("form").serialize(),
+            function (data) {
+                $("#config_upload_formats").val(data.config_upload);
+                if (data.reboot) {
+                    $("#spinning_success").show();
+                    var rebootInterval = setInterval(function () {
+                        $.get({
+                            url: getPath() + "/admin/alive",
+                            success: function (d, statusText, xhr) {
+                                if (xhr.status < 400) {
+                                    $("#spinning_success").hide();
+                                    clearInterval(rebootInterval);
+                                    if (data.result) {
+                                        handle_response(data.result);
+                                        data.result = "";
+                                    }
                                 }
-                            }
-                        },
-                    });
-                }, 1000);
-            } else {
-                handle_response(data.result);
+                            },
+                        });
+                    }, 1000);
+                } else {
+                    handle_response(data.result);
+                }
             }
-        });
+        );
     });
 
-    $("#delete_shelf").click(function(event) {
+    $("#delete_shelf").click(function (event) {
         confirmDialog(
-            $(this).attr('id'),
+            $(this).attr("id"),
             "GeneralDeleteModal",
-            $(this).data('value'),
-            function(value){
+            $(this).data("value"),
+            function (value) {
                 postButton(event, $("#delete_shelf").data("action"));
             }
         );
-
     });
 
-    $("#fileModal").on("show.bs.modal", function(e) {
+    $("#fileModal").on("show.bs.modal", function (e) {
         var target = $(e.relatedTarget);
         var path = $("#" + target.data("link"))[0].value;
         var folder = target.data("folderonly");
         var filter = target.data("filefilter");
         $("#element_selected").text(path);
         $("#file_confirm").data("link", target.data("link"));
-        $("#file_confirm").data("folderonly", (typeof folder === 'undefined') ? false : true);
-        $("#file_confirm").data("filefilter", (typeof filter === 'undefined') ? "" : filter);
+        $("#file_confirm").data(
+            "folderonly",
+            typeof folder === "undefined" ? false : true
+        );
+        $("#file_confirm").data(
+            "filefilter",
+            typeof filter === "undefined" ? "" : filter
+        );
         $("#file_confirm").data("newfile", target.data("newfile"));
-        fillFileTable(path,"dir", folder, filter);
+        fillFileTable(path, "dir", folder, filter);
     });
 
-    $("#file_confirm").click(function() {
-        $("#" + $(this).data("link"))[0].value = $("#element_selected").text()
+    $("#file_confirm").click(function () {
+        $("#" + $(this).data("link"))[0].value = $("#element_selected").text();
     });
 
-    $(document).on("click", ".tr-clickable", function() {
+    $(document).on("click", ".tr-clickable", function () {
         var path = this.attributes["data-path"].value;
         var type = this.attributes["data-type"].value;
         var folder = $(file_confirm).data("folderonly");
@@ -818,22 +947,22 @@ $(function() {
         } else {
             $("#element_selected").text(path);
         }
-        if(type === "dir") {
+        if (type === "dir") {
             fillFileTable(path, type, folder, filter);
         }
     });
 
-    $(window).resize(function() {
+    $(window).resize(function () {
         $(".discover .row").isotope("layout");
     });
 
-    $("#import_ldap_users").click(function() {
+    $("#import_ldap_users").click(function () {
         $("#DialogHeader").addClass("hidden");
         $("#DialogFinished").addClass("hidden");
         $("#DialogContent").html("");
         $("#spinner2").show();
         $.ajax({
-            method:"post",
+            method: "post",
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             url: getPath() + "/import_ldap_users",
@@ -841,30 +970,36 @@ $(function() {
                 $("#spinner2").hide();
                 $("#DialogContent").html(data.text);
                 $("#DialogFinished").removeClass("hidden");
-            }
+            },
         });
     });
 
-    $(".author-expand").click(function() {
-        $(this).parent().find("a.author-name").slice($(this).data("authors-max")).toggle();
+    $(".author-expand").click(function () {
+        $(this)
+            .parent()
+            .find("a.author-name")
+            .slice($(this).data("authors-max"))
+            .toggle();
         $(this).parent().find("span.author-hidden-divider").toggle();
-        $(this).html() === $(this).data("collapse-caption") ? $(this).html("(...)") : $(this).html($(this).data("collapse-caption"));
+        $(this).html() === $(this).data("collapse-caption")
+            ? $(this).html("(...)")
+            : $(this).html($(this).data("collapse-caption"));
         $(".discover .row").isotope("layout");
     });
 
-    $(".update-view").click(function(e) {
+    $(".update-view").click(function (e) {
         var view = $(this).data("view");
         e.preventDefault();
         e.stopPropagation();
         $.ajax({
-            method:"post",
+            method: "post",
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             url: getPath() + "/ajax/view",
-            data: "{\"series\": {\"series_view\": \""+ view +"\"}}",
+            data: '{"series": {"series_view": "' + view + '"}}',
             success: function success() {
                 location.reload();
-            }
+            },
         });
     });
 });

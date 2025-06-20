@@ -74,11 +74,11 @@ class HardcoverClient:
                 }
             }"""
         response = self.execute(query)
-        return (response.get("me")[0] or [{}]).get("account_privacy_setting_id",1)
+        return (response.get("me")[0] or [{}]).get("account_privacy_setting_id", 1)
 
     def get_user_book(self, ids):
         query = ""
-        variables={}
+        variables = {}
         if "hardcover-edition" in ids: 
             query = """
                 query ($query: Int) {
@@ -110,8 +110,8 @@ class HardcoverClient:
                 }"""
             variables["slug"] = ids["hardcover"]
         query += USER_BOOK_FRAGMENT
-        response = self.execute(query,variables)
-        return next(iter(response.get("me")[0].get("user_books")),None)
+        response = self.execute(query, variables)
+        return next(iter(response.get("me")[0].get("user_books")), None)
         
     def update_reading_progress(self, identifiers, progress_percent):
         ids = self.parse_identifiers(identifiers)

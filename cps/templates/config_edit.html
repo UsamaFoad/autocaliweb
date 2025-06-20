@@ -25,15 +25,15 @@
           <label for="config_port">{{_('Server Port')}}</label>
           <input type="number" min="1" max="65535" class="form-control" name="config_port" id="config_port" value="{% if config.config_port != None %}{{ config.config_port }}{% endif %}" autocomplete="off" required>
         </div>
-        <label for="config_certfile">{{_('SSL certfile location (leave it empty for non-SSL Servers)')}}</label>
-         <div class="form-group input-group">
+        <div class="form-group input-group">
+          <label for="config_certfile">{{_('SSL certfile location (leave it empty for non-SSL Servers)')}}</label>
           <input type="text" class="form-control" id="config_certfile" name="config_certfile" value="{% if config.config_certfile != None %}{{ config.config_certfile }}{% endif %}" autocomplete="off">
           <span class="input-group-btn">
             <button type="button" data-toggle="modal" data-link="config_certfile" data-target="#fileModal" id="certfile_path" class="btn btn-default"><span class="glyphicon glyphicon-folder-open"></span></button>
           </span>
         </div>
+        <div class="form-group input-group">
           <label for="config_keyfile" >{{_('SSL Keyfile location (leave it empty for non-SSL Servers)')}}</label>
-         <div class="form-group input-group">
           <input type="text" class="form-control" id="config_keyfile" name="config_keyfile" value="{% if config.config_keyfile != None %}{{ config.config_keyfile }}{% endif %}" autocomplete="off">
           <span class="input-group-btn">
             <button type="button" id="keyfile_path" data-toggle="modal" data-link="config_keyfile" data-target="#fileModal" class="btn btn-default"><span class="glyphicon glyphicon-folder-open"></span></button>
