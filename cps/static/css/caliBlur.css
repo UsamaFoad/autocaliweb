@@ -3505,7 +3505,8 @@ textarea {
   text-align: right;
   position: absolute;
   right: 0;
-  padding: 12.5px;
+  padding: 9.5px;
+  padding-right: 27px;
 }
 
 #metaModal > .modal-dialog > .modal-content > .modal-body {
@@ -3515,7 +3516,7 @@ textarea {
 #metaModal > .modal-dialog > .modal-content > .modal-body > .text-center {
   text-align: center;
   margin-bottom: 0;
-  padding-top: 10px;
+  padding-top: 29px;
 }
 
 #metaModal > .modal-dialog > .modal-content > .modal-body > #book-list {
@@ -8557,6 +8558,12 @@ body
 #theme,
 label[for="theme"] {
   display: inline;
+}
+
+@media only screen and (max-width: 992px) {
+  #metaModal > .modal-dialog > .modal-content > .modal-header > div {
+    padding-right: 12px;
+  }
 }
 
 @media only screen and (max-width: 767px) {
