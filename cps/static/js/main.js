@@ -63,9 +63,22 @@ function elementSorter(a, b) {
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker
         .register(getPath() + "/service-worker.js")
-        .then((reg) =>
-            console.log("Service Worker registered with scope:", reg.scope)
-        )
+        .then((reg) => {
+            console.log("Service Worker registered with scope:", reg.scope);
+
+            reg.onupdatefound = () => {
+                const newWorker = reg.installing;
+                newWorker.onstatechange = () => {
+                    if (
+                        newWorker.state === "installed" &&
+                        navigator.serviceWorker.controller
+                    ) {
+                        newWorker.postMessage("SKIP_WAITING");
+                        window.location.reload();
+                    }
+                };
+            };
+        })
         .catch((err) =>
             console.error("Service Worker registration failed:", err)
         );

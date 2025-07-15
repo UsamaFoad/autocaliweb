@@ -1,4 +1,4 @@
-const CACHE_NAME = "acw-cache-v1";
+const CACHE_NAME = "autocaliweb-cache";
 const PRECACHE_URLS = [
     "/",
     "/static/icon-dark.svg",
@@ -7,8 +7,8 @@ const PRECACHE_URLS = [
     "/static/js/main.js",
 ];
 
-self.addEventListener("install", (event) => {
-    event.waitUntil(
+self.addEventListener("install", (e) => {
+    e.waitUntil(
         caches
             .open(CACHE_NAME)
             .then((cache) => cache.addAll(PRECACHE_URLS))
@@ -16,8 +16,8 @@ self.addEventListener("install", (event) => {
     );
 });
 
-self.addEventListener("activate", (event) => {
-    event.waitUntil(
+self.addEventListener("activate", (e) => {
+    e.waitUntil(
         caches
             .keys()
             .then((names) =>
@@ -31,24 +31,24 @@ self.addEventListener("activate", (event) => {
     );
 });
 
-self.addEventListener("fetch", (event) => {
-    if (event.request.mode === "navigate") {
+self.addEventListener("fetch", (e) => {
+    if (e.request.mode === "navigate") {
         return;
     }
 
     if (
-        !event.request.url.startsWith(self.location.origin) ||
-        event.request.url.includes("/login") ||
-        event.request.url.includes("/oauth")
+        !e.request.url.startsWith(self.location.origin) ||
+        e.request.url.includes("/login") ||
+        e.request.url.includes("/oauth")
     ) {
-        return event.respondWith(fetch(event.request));
+        return e.respondWith(fetch(e.request));
     }
 
-    event.respondWith(
-        caches.match(event.request).then(
+    e.respondWith(
+        caches.match(e.request).then(
             (cached) =>
                 cached ||
-                fetch(event.request).then((response) => {
+                fetch(e.request).then((response) => {
                     if (
                         response.type === "opaqueredirect" ||
                         response.status === 302
@@ -57,10 +57,16 @@ self.addEventListener("fetch", (event) => {
                     }
 
                     return caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, response.clone());
+                        cache.put(e.request, response.clone());
                         return response;
                     });
                 })
         )
     );
+});
+
+self.addEventListener("message", (e) => {
+    if (e.data === "SKIP_WAITING") {
+        self.skipWaiting();
+    }
 });

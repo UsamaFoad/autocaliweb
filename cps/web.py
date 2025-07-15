@@ -106,12 +106,16 @@ def add_security_headers(resp):
     csp += "; font-src 'self' data:"
     if request.endpoint == "web.read_book":
         csp += " blob: "
-    csp += "; img-src 'self'"
+    csp += "; connect-src 'self'"
+    if config.config_use_hardcover:
+        csp += " assets.hardcover.app"
+    if config.config_use_goodreads:
+        csp += " images.gr-assets.com i.gr-assets.com s.gr-assets.com"
+    csp += "; img-src 'self' data:"
     if request.path.startswith("/author/") and config.config_use_goodreads:
         csp += " images.gr-assets.com i.gr-assets.com s.gr-assets.com"
     if request.path.startswith("/author/") and config.config_use_hardcover:
         csp += " assets.hardcover.app img.hardcover.app"
-    csp += " data:"
     if request.endpoint == "edit-book.show_edit_book" or config.config_use_google_drive:
         csp += " *"
     if request.endpoint == "web.read_book":
@@ -867,7 +871,20 @@ def health_check():
 @web.route("/service-worker.js")
 def service_worker():
     try:
-        return send_from_directory(constants.STATIC_DIR, "js/service-worker.js", mimetype="application/javascript")
+        resp = make_response(send_from_directory(constants.STATIC_DIR, "js/service-worker.js", mimetype='application/javascript'))
+        headers = [
+            "default-src 'self';",
+            "font-src 'self' data:;",
+            "img-src 'self' data:;",
+            "connect-src 'self';",
+            "object-src 'none';"
+        ]
+        if config.config_use_hardcover:
+            headers[3] += " assets.hardcover.app"
+        if config.config_use_goodreads:
+            headers[3] += " images.gr-assets.com i.gr-assets.com s.gr-assets.com"
+        resp.headers['Content-Security-Policy'] = "; ".join(headers)
+        return resp
     except FileNotFoundError:
         log.error("Service worker file not found")
         abort(404)
