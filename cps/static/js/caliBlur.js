@@ -407,6 +407,7 @@ if ($.inArray(bodyClass[0], modalWanted) != -1) {
 $("#top_tasks").parent().addClass("top_tasks");
 $("#top_admin").parent().addClass("top_admin");
 $("#form-upload").parent().addClass("form-upload");
+$("#top_kosync").parent().addClass("top_kosync");
 $("acw-switch-theme").parent().addClass("acw-switch-theme");
 $("refresh-library").parent().addClass("refresh-library");
 
@@ -656,6 +657,15 @@ $("#top_admin")
         "data-viewport": "#main-nav",
     })
     .addClass("admin-btn-tooltip");
+
+$("#top_kosync")
+    .attr({
+        "data-toggle": "tooltip",
+        title: $("#top_kosync").text(), // Kosync
+        "data-placement": "bottom",
+        "data-viewport": "#main-nav",
+    })
+    .addClass("kosync-btn-tooltip");
 
 $(".profileDrop")
     .attr({

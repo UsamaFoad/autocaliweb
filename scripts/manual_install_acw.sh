@@ -146,7 +146,8 @@ install_system_deps() {
         libxkbcommon0 libegl1 libxdamage1 \
         libgl1 libglx-mesa0 xz-utils \
         sqlite3 xdg-utils inotify-tools \
-        netcat-openbsd binutils curl wget
+        netcat-openbsd binutils curl \
+        wget zip
 }
 
 # Check directory structure
@@ -231,6 +232,24 @@ install_kepubify() {
     echo "$KEPUBIFY_RELEASE" >/app/KEPUBIFY_RELEASE
 }
 
+make_koreader_plugin() {
+    print_status "Creating ACWSync plugin for KOReader..."
+    if [ -d "$INSTALL_DIR/koreader/plugins/acwsync.koplugin" ]; then
+        cd "$INSTALL_DIR/koreader/plugins"
+        print_status "Calculating digest of plugin files..."
+        PLUGIN_DIGEST=$(find acwsync.koplugin -type f -exec sha256sum {} + | sha256sum | cut -d' ' -f1)
+        print_status "Plugin digest: $PLUGIN_DIGEST"
+        echo "Plugin files digest: $PLUGIN_DIGEST" > acwsync.koplugin/${PLUGIN_DIGEST}.digest
+        echo "Build date: $(date)" >> acwsync.koplugin/${PLUGIN_DIGEST}.digest
+        echo "Files included:" >> acwsync.koplugin/${PLUGIN_DIGEST}.digest
+        find acwsync.koplugin -type f -name "*.lua" -o -name "*.json" | sort >> acwsync.koplugin/${PLUGIN_DIGEST}.digest
+        zip -r koplugin.zip acwsync.koplugin/
+        print_status "Created koplugin.zip from acwsync.koplugin folder with digest file: ${PLUGIN_DIGEST}.digest"
+    else
+        print_warning "acwsync.koplugin directory not found, skipping plugin creation"
+    fi
+}
+
 # Install external tools (with detection)
 install_external_tools() {
     print_status "Checking for external tools..."
@@ -281,6 +300,13 @@ install_external_tools() {
             print_warning "Skipping Kepubify installation. You'll need to install it manually."
             echo "Unknown" >/app/KEPUBIFY_RELEASE
         fi
+    fi
+
+    if [ -f $INSTALL_DIR/koreader/plugins/koplugin.zip ]; then
+        cp $INSTALL_DIR/koreader/plugins/koplugin.zip $INSTALL_DIR/cps/static/
+        print_status "Koreader plugin koplugin.zip copied to static directory"
+    else
+        print_warning "Koreader plugin koplugin.zip not found, skipping copy"
     fi
 }
 

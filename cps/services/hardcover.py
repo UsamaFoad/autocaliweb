@@ -223,7 +223,7 @@ class HardcoverClient:
         }
         response = self.execute(query=mutation, variables=variables)
         return response.get("insert_user_book_read").get("user_book_read")
-        
+
     def parse_identifiers(self, identifiers):
         if not isinstance(identifiers, dict):
             identifiers = {id.type:id.val for id in identifiers if id.type.startswith("hardcover") or id.type == "isbn"}
@@ -234,7 +234,8 @@ class HardcoverClient:
             slug = identifiers.get("hardcover")
             isbn = identifiers.get("isbn")
             if not slug:
-                raise ValueError("No hardcover slug")
+                log.error("No hardcover slug in identifiers: %s", identifiers)
+                return identifiers
             book_id, edition_id = self.get_book_id(slug, isbn)
             identifiers["hardcover-id"] = book_id
             if edition_id is not None:

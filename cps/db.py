@@ -159,6 +159,8 @@ class Identifiers(Base):
             return "Databáze knih"
         if format_type == "hardcover":
             return "Hardcover"
+        if format_type == "ibdb":
+            return "IBDB"
         else:
             return self.type
 
@@ -202,6 +204,8 @@ class Identifiers(Base):
             return "https://app.thestorygraph.com/books/{0}".format(self.val)
         elif format_type == "hardcover":
             return "https://hardcover.app/books/{0}".format(self.val)
+        elif format_type == "ibdb":
+            return "https://ibdb.dev/book/{0}".format(self.val)
         elif self.val.lower().startswith("javascript:"):
             return quote(self.val)
         elif self.val.lower().startswith("data:"):

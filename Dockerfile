@@ -39,7 +39,7 @@ RUN apt-get update && \
       libegl1 libxdamage1 libgl1 \
       libglx-mesa0 xz-utils sqlite3 \
       xdg-utils tzdata inotify-tools \
-      netcat-openbsd binutils
+      netcat-openbsd binutils zip
 
 # Install S6-Overlay
 RUN export S6_OVERLAY_VERSION=$(curl -s https://api.github.com/repos/just-containers/s6-overlay/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
@@ -60,9 +60,18 @@ RUN cd /app/autocaliweb && \
     -r /app/autocaliweb/requirements.txt \
     -r /app/autocaliweb/optional-requirements.txt 
 
+    
 COPY . /app/autocaliweb/
 
-
+RUN cd /app/autocaliweb/koreader/plugins && \
+    PLUGIN_DIGEST=$(find acwsync.koplugin -type f -name "*.lua" -o -name "*.json" | sort | xargs sha256sum | sha256sum | cut -d' ' -f1) && \
+    echo "Plugin files digest: $PLUGIN_DIGEST" >> acwsync.koplugin/${PLUGIN_DIGEST}.digest && \
+    echo "Build date: ${BUILD_DATE}" >> acwsync.koplugin/${PLUGIN_DIGEST}.digest && \
+    echo "Files included:" >> acwsync.koplugin/${PLUGIN_DIGEST}.digest && \
+    find acwsync.koplugin -type f -name "*.lua" -o -name "*.json" | sort >> acwsync.koplugin/${PLUGIN_DIGEST}.digest && \
+    zip -r koplugin.zip acwsync.koplugin/ && \
+    cp /app/autocaliweb/koreader/plugins/koplugin.zip /app/autocaliweb/cps/static
+    
 RUN cp -r /app/autocaliweb/root/* / && \ 
     rm -R /app/autocaliweb/root/ && \
     /app/autocaliweb/scripts/setup-acw.sh && \

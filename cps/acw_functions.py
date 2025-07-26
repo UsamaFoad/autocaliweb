@@ -157,6 +157,7 @@ def set_acw_settings():
                         'prc', 'pdb', 'pml', 'rb',
                         'rtf', 'snb', 'tcr', 'txt', 'txtz']
     target_formats = ['epub', 'azw3', 'kepub', 'mobi', 'pdf']
+    automerge_options = ['ignore', 'overwrite', 'new_record']
 
     boolean_settings = []
     string_settings = []
@@ -231,7 +232,7 @@ def set_acw_settings():
 
     return render_title_template("acw_settings.html", title=_("Autocaliweb User Settings"), page="acw-settings",
                                     acw_settings=acw_settings, ignorable_formats=ignorable_formats,
-                                    target_formats=target_formats)
+                                    target_formats=target_formats, automerge_options=automerge_options)
 
 ##————————————————————————————————————————————————————————————————————————————##
 ##                                                                            ##

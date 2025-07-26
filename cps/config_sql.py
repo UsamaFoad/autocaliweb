@@ -184,6 +184,8 @@ class _Settings(_Base):
     def __repr__(self):
         return self.__class__.__name__
 
+def is_allowed_unrar_path(path):
+    return path in constants.ALLOWED_UNRAR_PATHS
 
 # Class holds all application specific settings in autocaliweb
 class ConfigSQL(object):
@@ -309,8 +311,13 @@ class ConfigSQL(object):
         :returns: `True` if the field has changed value
         """
         new_value = dictionary.get(field, default)
-        if new_value is None:
+        if new_value is None or new_value == "":
             return False
+        
+        if field == "config_rarfile_location":
+            if not is_allowed_unrar_path(new_value):
+                log.warning("Rejected unallowed unrar path: %s", new_value)
+                return False
 
         if field not in self.__dict__:
             log.warning("_ConfigSQL trying to set unknown field '%s' = %r", field, new_value)

@@ -169,6 +169,8 @@ def HandleSyncRequest():
     # We reload the book database so that the user gets a fresh view of the library
     # in case of external changes (e.g: adding a book through Calibre).
     calibre_db.reconnect_db(config, ub.app_DB_path)
+    # also refresh thumbnails if configured
+    helper.update_thumbnail_cache()
 
     only_kobo_shelves = current_user.kobo_only_shelves_sync
 
@@ -240,8 +242,10 @@ def HandleSyncRequest():
         changed_entries = (changed_entries
                            .join(db.Data).outerjoin(ub.ArchivedBook, and_(db.Books.id == ub.ArchivedBook.book_id,
                                                                           ub.ArchivedBook.user_id == current_user.id))
-                           .filter(db.Books.id.notin_(calibre_db.session.query(ub.KoboSyncedBooks.book_id)
-                                                      .filter(ub.KoboSyncedBooks.user_id == current_user.id)))
+                           .filter(or_(
+                               db.Books.id.notin_(calibre_db.session.query(ub.KoboSyncedBooks.book_id).filter(ub.KoboSyncedBooks.user_id == current_user.id)),
+                               func.datetime(db.Books.last_modified) > sync_token.books_last_modified
+                            ))
                            .filter(calibre_db.common_filters(allow_show_archived=True))
                            .filter(db.Data.format.in_(KOBO_FORMATS))
                            .order_by(db.Books.last_modified)
@@ -250,6 +254,7 @@ def HandleSyncRequest():
     reading_states_in_new_entitlements = []
     books = changed_entries.limit(SYNC_ITEM_LIMIT)
     log.debug("Books to Sync: {}".format(len(books.all())))
+    log.debug("sync_token.books_last_created: %s" % sync_token.books_last_created)
     for book in books:
         formats = [data.format for data in book.Books.data]
         if 'KEPUB' not in formats and config.config_kepubifypath and 'EPUB' in formats:
@@ -269,13 +274,18 @@ def HandleSyncRequest():
         ts_created = book.Books.timestamp.replace(tzinfo=None)
 
         try:
-            ts_created = max(ts_created, book.date_added)
+            ts_created = max(ts_created, book.date_added.replace(tzinfo=None))
         except AttributeError:
             pass
 
+        log.debug("Syncing book: %s, ts_created: %s", book.Books.id, ts_created)
         if ts_created > sync_token.books_last_created:
+            entitlement["BookMetadata"] = get_metadata(book.Books)
             sync_results.append({"NewEntitlement": entitlement})
+        elif only_kobo_shelves and book.deleted:
+            sync_results.append({"ChangedEntitlement": entitlement})
         else:
+            entitlement["BookMetadata"] = get_metadata(book.Books)
             sync_results.append({"ChangedEntitlement": entitlement})
 
         new_books_last_modified = max(
@@ -283,7 +293,7 @@ def HandleSyncRequest():
         )
         try:
             new_books_last_modified = max(
-                new_books_last_modified, book.date_added
+                new_books_last_modified, book.date_added.replace(tzinfo=None)
             )
         except AttributeError:
             pass
@@ -303,7 +313,7 @@ def HandleSyncRequest():
     new_archived_last_modified = max(new_archived_last_modified, max_change)
 
     # no. of books returned
-    book_count = changed_entries.count()
+    book_count = changed_entries.count() - books.count()
     # last entry:
     cont_sync = bool(book_count)
     log.debug("Remaining books to Sync: {}".format(book_count))
@@ -316,8 +326,10 @@ def HandleSyncRequest():
             .join(ub.Shelf)\
             .filter(current_user.id == ub.Shelf.user_id)\
             .filter(ub.Shelf.kobo_sync,
-                    ub.KoboReadingState.last_modified > sync_token.reading_state_last_modified)\
-            .distinct()
+                    or_(
+                        ub.KoboReadingState.last_modified > sync_token.reading_state_last_modified,
+                        func.datetime(ub.BookShelf.date_added) > sync_token.books_last_modified
+                    )).distinct()
     else:
         changed_reading_states = changed_reading_states.filter(
             ub.KoboReadingState.last_modified > sync_token.reading_state_last_modified)
@@ -510,10 +522,16 @@ def get_metadata(book):
         if i.format_type() == "ISBN":
             book_isbn = i.val
 
+    coverVersion = helper.get_book_cover_epoch_date_with_uuid(book_uuid)
+    if coverVersion:
+        coverImageId = book_uuid + "/" + coverVersion
+    else:
+        coverImageId = book_uuid
+
     metadata = {
         "Categories": ["00000000-0000-0000-0000-000000000001", ],
         # "Contributors": get_author(book),
-        "CoverImageId": book_uuid,
+        "CoverImageId": coverImageId,
         "CrossRevisionId": book_uuid,
         "CurrentDisplayPrice": {"CurrencyCode": "USD", "TotalAmount": 0},
         "CurrentLoveDisplayPrice": {"TotalAmount": 0},
@@ -959,8 +977,10 @@ def get_current_bookmark_response(current_bookmark):
 
 @kobo.route("/<book_uuid>/<width>/<height>/<isGreyscale>/image.jpg", defaults={'Quality': ""})
 @kobo.route("/<book_uuid>/<width>/<height>/<Quality>/<isGreyscale>/image.jpg")
+@kobo.route("/<book_uuid>/<version>/<width>/<height>/<isGreyscale>/image.jpg", defaults={'Quality': ""})
+@kobo.route("/<book_uuid>/<version>/<width>/<height>/<Quality>/<isGreyscale>/image.jpg")
 @requires_kobo_auth
-def HandleCoverImageRequest(book_uuid, width, height, Quality, isGreyscale):
+def HandleCoverImageRequest(book_uuid, version, width, height, Quality, isGreyscale):
     try:
         if int(height) > 1000:
             resolution = COVER_THUMBNAIL_LARGE

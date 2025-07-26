@@ -19,5 +19,6 @@ import re
 
 
 def strip_whitespaces(text):
-    return re.sub(r"(^[\s\u200B-\u200D\ufeff]+)|([\s\u200B-\u200D\ufeff]+$)","", text)
-
+    text = re.sub(r'^[\s\u200B-\u200D\ufeff]+', '', text)
+    text = re.sub(r'[\s\u200B-\u200D\ufeff]+$', '', text)
+    return text

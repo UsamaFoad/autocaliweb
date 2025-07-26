@@ -223,7 +223,7 @@ class NewBookProcessor:
         import_filename = os.path.basename(book_path)
         try:
             if text:
-                subprocess.run(["calibredb", "add", book_path, "--automerge", "new_record", f"--library-path={self.library_dir}"], env=self.calibre_env, check=True)
+                subprocess.run(["calibredb", "add", book_path, "--automerge", self.acw_settings['auto_ingest_automerge'], f"--library-path={self.library_dir}"], env=self.calibre_env, check=True)
                 print(f"[ingest-processor] Added {import_path.stem} to Calibre database", flush=True)
             else:
                 meta = audiobook.get_audio_file_info(book_path, format, os.path.basename(book_path), False)

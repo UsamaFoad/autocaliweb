@@ -526,6 +526,22 @@ class Downloads(Base):
 
     def __repr__(self):
         return '<Download %r' % self.book_id
+    
+
+class KOSyncProgress(Base):
+    __tablename__ = 'kosync_progress'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    document = Column(String, nullable=False)
+    progress = Column(String, nullable=False)
+    percentage = Column(Float, nullable=False)
+    device = Column(String, nullable=False)
+    device_id = Column(String)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return '<KOSyncProgress %r - %r>' % (self.user_id, self.document)
 
 
 # Baseclass representing allowed domains for registration
@@ -587,6 +603,8 @@ def add_missing_tables(engine, _session):
         ArchivedBook.__table__.create(bind=engine)
     if not engine.dialect.has_table(engine.connect(), "thumbnail"):
         Thumbnail.__table__.create(bind=engine)
+    if not engine.dialect.has_table(engine.connect(), "kosync_progress"):
+        KOSyncProgress.__table__.create(bind=engine)
 
 
 # migrate all settings missing in registration table

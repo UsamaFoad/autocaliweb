@@ -160,8 +160,9 @@
                     </form>
                   </li>
               {% endif %}
-              {% if not current_user.is_anonymous and not simple%}
+              {% if not current_user.is_anonymous and not simple %}
                 <li class="top_tasks"><a id="top_tasks" href="{{url_for('tasks.get_tasks_status')}}"><span class="glyphicon glyphicon-tasks"></span> <span class="hidden-sm">{{_('Tasks')}}</span></a></li>
+                <li><a id="top_kosync" href="{{url_for('kosync.kosync_plugin_page')}}"><span class="glyphicon glyphicon-inbox"></span><span class="hidden-sm">{{_('Kosync')}}</span></a></li>
               {% endif %}
               {% if current_user.role_admin() %}
                 <li><a id="top_admin" data-text="{{_('Settings')}}" href="{{url_for('admin.admin')}}"><span class="glyphicon glyphicon-dashboard"></span> <span class="hidden-sm">{{_('Admin')}}</span></a></li>
