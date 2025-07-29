@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 from urllib.parse import quote
 
 import requests
-from cps import logger
+from cps import logger, constants
 from cps.services.Metadata import MetaRecord, MetaSourceInfo, Metadata
 
 log = logger.create()
@@ -38,7 +38,9 @@ class ComicVine(Metadata):
         f"&resources=issue&query="
     )
     QUERY_PARAMS = "&sort=name:desc&format=json"
-    HEADERS = {"User-Agent": "Not Evil Browser"}
+    HEADERS = {
+        "User-Agent": constants.USER_AGENT
+    }
 
     def search(
         self, query: str, generic_cover: str = "", locale: str = "en"

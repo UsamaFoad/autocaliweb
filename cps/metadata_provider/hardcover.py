@@ -20,7 +20,7 @@
 from typing import Dict, List, Optional
 
 import requests
-from cps import logger, config
+from cps import logger, config, constants
 from cps.services.Metadata import MetaRecord, MetaSourceInfo, Metadata
 from cps.isoLanguages import get_language_name
 from ..cw_login import current_user
@@ -91,6 +91,7 @@ class Hardcover(Metadata):
     """
     HEADERS = {
         "Content-Type": "application/json",
+        "User-Agent": constants.USER_AGENT,
     }
     FORMATS = ["","Physical Book","","","E-Book"] # Map reading_format_id to text equivelant.
 

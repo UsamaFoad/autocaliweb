@@ -27,7 +27,7 @@ from html2text import HTML2Text
 from lxml.html import HtmlElement, fromstring, tostring
 from markdown2 import Markdown
 
-from cps import logger
+from cps import logger, constants
 from cps.isoLanguages import get_language_name
 from cps.services.Metadata import MetaRecord, MetaSourceInfo, Metadata
 
@@ -113,12 +113,16 @@ class LubimyCzytac(Metadata):
 
     SUMMARY = "//script[@type='application/ld+json']//text()"
 
+    HEADERS = {
+        "User-Agent": constants.USER_AGENT,
+    }
+
     def search(
         self, query: str, generic_cover: str = "", locale: str = "en"
     ) -> Optional[List[MetaRecord]]:
         if self.active:
             try:
-                result = requests.get(self._prepare_query(title=query))
+                result = requests.get(self._prepare_query(title=query), LubimyCzytac.HEADERS)
                 result.raise_for_status()
             except Exception as e:
                 log.warning(e)

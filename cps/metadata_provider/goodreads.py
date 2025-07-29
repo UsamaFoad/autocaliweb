@@ -10,7 +10,7 @@ except ImportError:
     pass
 
 from cps.services.Metadata import MetaRecord, MetaSourceInfo, Metadata
-import cps.logger as logger
+from cps import logger, constants
 
 log = logger.create()
 
@@ -19,7 +19,7 @@ class Goodreads(Metadata):
     __name__ = "Goodreads"
     __id__ = "goodreads"
     headers = {
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': constants.USER_AGENT,
         'Accept-Language': 'en-US,en;q=0.9'
     }
     session = requests.Session()

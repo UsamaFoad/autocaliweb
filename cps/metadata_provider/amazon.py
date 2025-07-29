@@ -27,7 +27,7 @@ except ImportError:
     pass
 
 from cps.services.Metadata import MetaRecord, MetaSourceInfo, Metadata
-import cps.logger as logger
+from cps import logger, constants
 
 #from time import time
 from operator import itemgetter
@@ -38,7 +38,7 @@ class Amazon(Metadata):
     __name__ = "Amazon"
     __id__ = "amazon"
     headers = {'upgrade-insecure-requests': '1',
-               'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0',
+               'User-Agent': constants.USER_AGENT,
                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8',
                'Sec-Fetch-Site': 'same-origin',
                'Sec-Fetch-Mode': 'navigate',

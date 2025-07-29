@@ -23,7 +23,7 @@ from datetime import datetime
 
 import requests
 
-from cps import logger
+from cps import logger, constants
 from cps.isoLanguages import get_lang3, get_language_name
 from cps.services.Metadata import MetaRecord, MetaSourceInfo, Metadata
 
@@ -37,6 +37,9 @@ class IBDb(Metadata):
     META_URL = "https://ibdb.dev/"
     BOOK_URL = "https://ibdb.dev/book/"
     SEARCH_URL = "https://ibdb.dev/search?q="
+    HEADERS = {
+        "User-Agent": constants.USER_AGENT,
+    }
 
     def search(
         self, query: str, generic_cover: str = "", locale: str = "en"
@@ -49,7 +52,7 @@ class IBDb(Metadata):
                 tokens = [quote(t.encode("utf-8")) for t in title_tokens]
                 query = "+".join(tokens)
             try:
-                results = requests.get(IBDb.SEARCH_URL + query)
+                results = requests.get(IBDb.SEARCH_URL + query, IBDb.HEADERS)
                 results.raise_for_status()
             except Exception as e:
                 log.warning(e)

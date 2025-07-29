@@ -23,7 +23,7 @@ import requests
 from html2text import HTML2Text
 from lxml import etree
 
-from cps import logger
+from cps import logger, constants
 from cps.services.Metadata import Metadata, MetaRecord, MetaSourceInfo
 
 log = logger.create()
@@ -64,8 +64,7 @@ class Douban(Metadata):
 
     session = requests.Session()
     session.headers = {
-        'user-agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36 Edg/98.0.1108.56',
+        'user-agent': constants.USER_AGENT,
     }
 
     def search(self,

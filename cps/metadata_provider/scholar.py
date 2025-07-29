@@ -28,7 +28,7 @@ try:
 except FakeUserAgentError:
     raise ImportError("No module named 'scholarly'")
 
-from cps import logger
+from cps import logger, constants
 from cps.services.Metadata import MetaRecord, MetaSourceInfo, Metadata
 
 log = logger.create()
@@ -38,6 +38,9 @@ class scholar(Metadata):
     __name__ = "Google Scholar"
     __id__ = "googlescholar"
     META_URL = "https://scholar.google.com/"
+    HEADERS = {
+        "User-Agent": constants.USER_AGENT,
+    }
 
     def search(
         self, query: str, generic_cover: str = "", locale: str = "en"
@@ -49,6 +52,7 @@ class scholar(Metadata):
                 tokens = [quote(t.encode("utf-8")) for t in title_tokens]
                 query = " ".join(tokens)
             try:
+                scholarly.use_proxy(None, scholar.HEADERS)
                 scholarly.set_timeout(20)
                 scholarly.set_retries(2)
                 scholar_gen = itertools.islice(scholarly.search_pubs(query), 10)
