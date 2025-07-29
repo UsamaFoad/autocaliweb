@@ -3,6 +3,7 @@ name: Bug/Problem report
 about: Create a report to help us improve Autocaliweb
 title: "[BUG] ..."
 labels: ["bug", "triage"]
+projects: "gelbphoenix/2"
 assignees: ""
 ---
 

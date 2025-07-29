@@ -3,6 +3,7 @@ name: Feature request
 about: Suggest an idea for Autocaliweb
 title: "[FEATURE] ..."
 labels: ["enhancement"]
+projects: "gelbphoenix/2"
 assignees: ""
 ---
 
