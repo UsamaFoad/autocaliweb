@@ -170,7 +170,7 @@ BookMeta = namedtuple('BookMeta', 'file_path, extension, title, author, cover, d
                                   'series_id, languages, publisher, pubdate, identifiers')
 
 # python build process likes to have x.y.zbw -> b for beta and w a counting number
-STABLE_VERSION =  'v0.7.4'
+STABLE_VERSION =  'v0.7.5'
 
 USER_AGENT = f"Autocaliweb/{STABLE_VERSION}"
 
