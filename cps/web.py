@@ -850,8 +850,6 @@ def render_archived_books(page, sort_param):
 def health_check():
     uptime = time.time() - _start_time
 
-    version = open("/app/ACW_RELEASE", "r").read().strip()
-
     try:
         db_path = acw_get_library_location() + "metadata.db"
         conn = sqlite3.connect(db_path)
@@ -865,7 +863,7 @@ def health_check():
     return jsonify({
         "status": "ok" if db_up else "degraded",
         "uptime": round(uptime, 2),
-        "version": version
+        "version": constants.USER_AGENT
     }), 200 if db_up else 503
 
 @web.route("/service-worker.js")
@@ -875,7 +873,7 @@ def service_worker():
         headers = [
             "default-src 'self';",
             "font-src 'self' data:;",
-            "img-src 'self' data:;",
+            "img-src 'self' portal.dnb.de images.isbndb.com books.google.com images-na.ssl-images-amazon.com m.media-amazon.com img9.doubanio.com comicvine.gamespot.com s.lubimyczytac.pl data:;",
             "connect-src 'self';",
             "object-src 'none';"
         ]

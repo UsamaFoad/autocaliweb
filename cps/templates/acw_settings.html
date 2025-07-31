@@ -14,7 +14,7 @@
   <h2>{{title}}</h2>
   <form action="{{ url_for('acw_settings.set_acw_settings')}}" method="post">
     <div class="settings-container">
-      <h4 class="settings-section-header">Enable/Disable Calibre-Web Automated Services</h4>
+      <h4 class="settings-section-header">Enable/Disable Autocaliweb Services</h4>
       
       {% if acw_settings['auto_convert'] %}
       <input type="checkbox" id="auto_convert" name="auto_convert" value="True" checked style="accent-color: var(--color-secondary);" data-toggle="tooltip"data-placement="right" data-html="true" title="Placeholder">

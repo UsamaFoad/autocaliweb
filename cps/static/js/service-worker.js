@@ -39,7 +39,8 @@ self.addEventListener("fetch", (e) => {
     if (
         !e.request.url.startsWith(self.location.origin) ||
         e.request.url.includes("/login") ||
-        e.request.url.includes("/oauth")
+        e.request.url.includes("/oauth") ||
+        e.request.url.includes("/metadata")
     ) {
         return e.respondWith(fetch(e.request));
     }

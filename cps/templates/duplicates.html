@@ -1,0 +1,242 @@
+{% extends "layout.html" %} {% block header %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/duplicates.css') }}"
+/>
+{% endblock %} {% block body %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <h2>{{_('Duplicate Books')}}</h2>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <p class="text-muted">
+        {{_('Books with matching titles and authors. Visual inspection
+        recommended to identify true duplicates.')}}
+      </p>
+
+      {% if duplicate_groups %}
+      <div class="bulk-actions">
+        <div class="form-inline">
+          <button type="button" class="btn btn-sm btn-default" id="select_all">
+            {{_('Select Duplicates')}}
+          </button>
+          <button type="button" class="btn btn-sm btn-default" id="select_none">
+            {{_('Select None')}}
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-danger disabled"
+            id="delete_selected"
+            aria-disabled="true"
+          >
+            {{_('Delete Selected')}}
+          </button>
+          <span id="selection_count" class="selection-info"></span>
+        </div>
+      </div>
+
+      <div class="duplicates-container">
+        {% for group in duplicate_groups %}
+        <div class="duplicate-group">
+          <div class="duplicate-header">
+            <div class="duplicate-title">{{ group.title }}</div>
+            <div class="duplicate-author">by {{ group.author }}</div>
+            <div class="duplicate-count">
+              {{ group.count }} duplicate{{ 's' if group.count > 1 else '' }}
+              found
+            </div>
+          </div>
+
+          <div class="books-grid">
+            {% for book in group.books %}
+            <div class="book-item" data-book-id="{{ book.id }}">
+              <input
+                type="checkbox"
+                class="book-checkbox"
+                value="{{ book.id }}"
+                data-title="{{ book.title }}"
+                data-authors="{{ book.author_names }}"
+              />
+
+              <div class="book-cover">
+                <img
+                  src="{{ book.cover_url }}"
+                  alt="Cover for {{ book.title }}"
+                  onerror="this.src='/static/generic_cover.jpg'"
+                />
+              </div>
+
+              <div class="book-details">
+                <div class="book-title">{{ book.title }}</div>
+                <div class="book-meta">
+                  <div><strong>Authors:</strong> {{ book.author_names }}</div>
+                  <div>
+                    <strong>Added:</strong> {{ book.timestamp.strftime('%Y-%m-%d
+                    %H:%M') }}
+                  </div>
+                  <div><strong>Book ID:</strong> {{ book.id }}</div>
+                  {% if book.series %}
+                  <div>
+                    <strong>Series:</strong>
+                    {% for series in book.series %} {{ series.name }}{% if
+                    book.series_index %} ({{ book.series_index }}){% endif %}{%
+                    if not loop.last %}, {% endif %} {% endfor %}
+                  </div>
+                  {% endif %} {% if book.data %}
+                  <div>
+                    <strong>Formats:</strong>
+                    {% for data in book.data %}{{ data.format }}{% if not
+                    loop.last %}, {% endif %}{% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="no-duplicates">
+        <h3>{{_('No Duplicate Books Found')}}</h3>
+        <p>
+          {{_('Your library has no books with duplicate title and author
+          combinations.')}}
+        </p>
+        <p class="text-muted">
+          {{_('This search looks for books with identical titles AND authors to
+          avoid false positives.')}}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div
+  class="modal fade"
+  id="delete_selected_modal"
+  role="dialog"
+  aria-labelledby="deleteSelectedLabel"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-center">
+        <span>{{_('Are you really sure?')}}</span>
+      </div>
+      <div class="modal-body">
+        <p></p>
+        <div class="text-left">
+          {{_('The following books will be permanently deleted:')}}
+        </div>
+        <p></p>
+        <div class="text-left" id="display-delete-selected-books"></div>
+        <p></p>
+        <div class="text-left">
+          <strong>{{_('This action cannot be undone!')}}</strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <input
+          id="delete_selected_confirm"
+          type="button"
+          class="btn btn-danger"
+          value="{{_('Delete')}}"
+          name="delete_selected_confirm"
+          data-dismiss="modal"
+        />
+        <button
+          id="delete_selected_abort"
+          type="button"
+          class="btn btn-default"
+          data-dismiss="modal"
+        >
+          {{_('Cancel')}}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div
+  class="modal fade"
+  id="success_modal"
+  role="dialog"
+  aria-labelledby="successModalLabel"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-center">
+        <span id="success_modal_title">{{_('Success')}}</span>
+      </div>
+      <div class="modal-body">
+        <div class="text-center">
+          <div
+            class="success-icon"
+            style="font-size: 48px; color: #28a745; margin-bottom: 20px"
+          >
+            <i class="glyphicon glyphicon-ok-circle"></i>
+          </div>
+          <p id="success_modal_message">
+            {{_('Selected duplicate books have been deleted successfully!')}}
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          id="success_modal_ok"
+          type="button"
+          class="btn btn-default"
+          data-dismiss="modal"
+        >
+          {{_('OK')}}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Error Modal -->
+<div
+  class="modal fade"
+  id="error_modal"
+  role="dialog"
+  aria-labelledby="errorModalLabel"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-center">
+        <span id="error_modal_title">{{_('Error')}}</span>
+      </div>
+      <div class="modal-body">
+        <div class="text-center">
+          <div
+            class="error-icon"
+            style="font-size: 48px; color: #dc3545; margin-bottom: 20px"
+          >
+            <i class="glyphicon glyphicon-remove-circle"></i>
+          </div>
+          <p id="error_modal_message">
+            {{_('An error occurred while processing your request.')}}
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          id="error_modal_ok"
+          type="button"
+          class="btn btn-default"
+          data-dismiss="modal"
+        >
+          {{_('OK')}}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block js %}
+<script src="{{ url_for('static', filename='js/duplicates.js') }}"></script>
+{% endblock %}

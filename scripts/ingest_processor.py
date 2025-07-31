@@ -14,6 +14,7 @@ from kindle_epub_fixer import EPUBFixer
 import audiobook
 
 
+
 # Creates a lock file unless one already exists meaning an instance of the script is
 # already running, then the script is closed, the user is notified and the program
 # exits with code 2
@@ -91,6 +92,32 @@ class NewBookProcessor:
         else:
             con.close()
             return None
+        
+    def wait_for_file_stable(filepath, stable_seconds=5, timeout=120):
+        """Waits for a file to become stable, meaning it hasn't changed in size for a certain period of time."""
+        last_size = -1
+        stable_time = 0
+        start_time = time.time()
+
+        while True:
+            try: 
+                current_size = os.path.getsize(filepath)
+            except FileNotFoundError:
+                current_size = -1
+
+            if current_size == last_size and current_size != -1:
+                stable_time += 1
+            else:
+                stable_time = 0
+                last_size = current_size
+
+            if stable_time >= stable_seconds:
+                break
+
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"File {filepath} did not stabilize within {timeout} seconds.")
+            
+            time.sleep(1)
 
     def get_dirs(self, dirs_json_path: str) -> tuple[str, str, str]:
         dirs = {}
@@ -144,7 +171,7 @@ class NewBookProcessor:
         target_filepath = f"{self.tmp_conversion_dir}{original_filepath.stem}.{end_format}"
         try:
             t_convert_book_start = time.time()
-            subprocess.run(['ebook-convert', self.filepath, target_filepath], check=True)
+            subprocess.run(['ebook-convert', self.filepath, target_filepath], env=self.calibre_env, check=True)
             t_convert_book_end = time.time()
             time_book_conversion = t_convert_book_end - t_convert_book_start
             print(f"\n[ingest-processor]: END_CON: Conversion of {self.filename} complete in {time_book_conversion:.2f} seconds.\n", flush=True)
@@ -234,7 +261,7 @@ class NewBookProcessor:
 
                 subprocess.run(
                     [
-                        "calibredb", "add", book_path, "--automerge", "new_record", 
+                        "calibredb", "add", book_path, "--automerge", self.acw_settings['auto_ingest_automerge'], 
                         "--title", meta[2], 
                         "--authors", meta[3], 
                         "--cover", meta[4], 
@@ -307,6 +334,12 @@ def main(filepath=sys.argv[1]):
             f = os.path.join(filepath, filename)
             if Path(f).exists():
                 main(f)
+        return
+    
+    try:
+        self.wait_for_file_stable(filepath)
+    except TimeoutError as e:
+        print(f"[ingest-processor] Skipping {filepath} due to timeout error: {e}", flush=True)
         return
 
     nbp = NewBookProcessor(filepath)
