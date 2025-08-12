@@ -100,32 +100,45 @@ _start_time = time.time()
 def add_security_headers(resp):
     default_src = ([host.strip() for host in config.config_trustedhosts.split(',') if host] +
                    ["'self'", "'unsafe-inline'", "'unsafe-eval'"])
+    
     csp = "default-src " + ' '.join(default_src)
     if request.endpoint == "web.read_book" and config.config_use_google_drive:
         csp +=" blob: "
+
     csp += "; font-src 'self' data:"
     if request.endpoint == "web.read_book":
         csp += " blob: "
+
     csp += "; connect-src 'self'"
     if config.config_use_hardcover:
         csp += " assets.hardcover.app"
     if config.config_use_goodreads:
-        csp += " images.gr-assets.com i.gr-assets.com s.gr-assets.com"
+        csp += " images.gr-assets.com s.gr-assets.com i.gr-assets.com"
+    if request.endpoint == "edit-book.show_edit_book" or request.path.startswith("/metadata/"):
+        if not config.config_use_goodreads:
+            csp += " images.gr-assets.com i.gr-assets.com s.gr-assets.com"
+        csp += " portal.dnb.de images.isbndb.com books.google.com images-na.ssl-images-amazon.com m.media-amazon.com img9.doubanio.com comicvine.gamespot.com s.lubimyczytac.pl"
+    if request.endpoint == "web.service_worker":
+        csp += " *"
+
     csp += "; img-src 'self' data:"
     if request.path.startswith("/author/") and config.config_use_goodreads:
         csp += " images.gr-assets.com i.gr-assets.com s.gr-assets.com"
     if request.path.startswith("/author/") and config.config_use_hardcover:
         csp += " assets.hardcover.app img.hardcover.app"
-    if request.endpoint == "edit-book.show_edit_book" or config.config_use_google_drive:
+    if request.endpoint == "edit-book.show_edit_book" or request.endpoint == "web.service_worker" or config.config_use_google_drive:
         csp += " *"
     if request.endpoint == "web.read_book":
         csp += " blob: ; style-src-elem 'self' blob: 'unsafe-inline'"
+
     csp += "; object-src 'none';"
     resp.headers['Content-Security-Policy'] = csp
+
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
     resp.headers['X-XSS-Protection'] = '1; mode=block'
     resp.headers['Strict-Transport-Security'] = 'max-age=31536000';
+
     return resp
 
 
@@ -869,20 +882,7 @@ def health_check():
 @web.route("/service-worker.js")
 def service_worker():
     try:
-        resp = make_response(send_from_directory(constants.STATIC_DIR, "js/service-worker.js", mimetype='application/javascript'))
-        headers = [
-            "default-src 'self';",
-            "font-src 'self' data:;",
-            "img-src 'self' portal.dnb.de images.isbndb.com books.google.com images-na.ssl-images-amazon.com m.media-amazon.com img9.doubanio.com comicvine.gamespot.com s.lubimyczytac.pl data:;",
-            "connect-src 'self';",
-            "object-src 'none';"
-        ]
-        if config.config_use_hardcover:
-            headers[3] += " assets.hardcover.app"
-        if config.config_use_goodreads:
-            headers[3] += " images.gr-assets.com i.gr-assets.com s.gr-assets.com"
-        resp.headers['Content-Security-Policy'] = "; ".join(headers)
-        return resp
+        return make_response(send_from_directory(constants.STATIC_DIR, "js/service-worker.js", mimetype='application/javascript'))
     except FileNotFoundError:
         log.error("Service worker file not found")
         abort(404)
@@ -1356,6 +1356,32 @@ def send_to_ereader(book_id, book_format, convert):
         response = [{'type': "danger", 'message': _("Oops! Please update your profile with a valid eReader Email.")}]
     return Response(json.dumps(response), mimetype='application/json')
 
+@web.route('/send_selected/<int:book_id>', methods=["POST"])
+@login_required_if_no_ano
+@download_required
+def send_to_selected_ereaders(book_id):
+    if not config.get_mail_server_configured():
+        response = [{'type': "danger", 'message': _("Please configure the SMTP mail settings first...")}]
+        return Response(json.dumps(response), mimetype='application/json')
+
+    selected_emails = request.form.get('selected_emails', '')
+    book_format = request.form.get('book_format', '')
+    convert = request.form.get('convert', '0')
+
+    if not selected_emails:
+        response = [{'type': "danger", 'message': _("No email addresses selected")}]
+        return Response(json.dumps(response), mimetype='application/json')
+
+    result = send_mail(book_id, book_format, int(convert), selected_emails, config.get_book_path(),
+                       current_user.name)
+
+    if result is None:
+        ub.update_download(book_id, int(current_user.id))
+        response = [{'type': "success", 'message': _("Success! Book queued for sending to selected addresses")}]
+    else:
+        response = [{'type': "danger", 'message': _("Oops! There was an error sending book: %(res)s", res=result)}]
+
+    return Response(json.dumps(response), mimetype='application/json')
 
 # ################################### Login Logout ##################################################################
 
