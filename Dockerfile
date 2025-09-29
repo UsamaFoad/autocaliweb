@@ -43,11 +43,15 @@ RUN apt-get update && \
       netcat-openbsd binutils zip \
       fonts-dejavu-core
 
+# debug S6-Overlay url
+RUN echo "Downloading: https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz"
+
 # Install S6-Overlay
-RUN export S6_OVERLAY_VERSION=$(curl -s https://api.github.com/repos/just-containers/s6-overlay/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
-    curl -Lo /tmp/s6-overlay-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').tar.xz && \
-    curl -Lo /tmp/s6-overlay-noarch.tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz && \
-    tar -C / -Jxpf /tmp/s6-overlay-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').tar.xz && \
+RUN export S6_ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/') && \
+    export S6_OVERLAY_VERSION=$(curl -s https://api.github.com/repos/just-containers/s6-overlay/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
+    curl -fL -o /tmp/s6-overlay-${S6_ARCH}.tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz && \
+    curl -fL -o /tmp/s6-overlay-noarch.tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz && \
+    tar -C / -Jxpf /tmp/s6-overlay-${S6_ARCH}.tar.xz && \
     tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
 
 ENV S6_STAGE2_HOOK=/docker-mods
