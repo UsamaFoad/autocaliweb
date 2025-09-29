@@ -18,6 +18,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_BREAK_SYSTEM_PACKAGES=1 \
     CALIBRE_DBPATH=/config \
+    CALIBRE_NO_DESKTOP_INTEGRATION=1 \
     UMASK=0002
 
 USER root
@@ -88,7 +89,8 @@ RUN export KEPUBIFY_RELEASE=$(curl -s https://api.github.com/repos/pgaskin/kepub
     echo "$KEPUBIFY_RELEASE" >| /app/KEPUBIFY_RELEASE
 
 # Install Calibre binaries
-RUN mkdir -p /app/calibre && \
+RUN export CALIBRE_NO_DESKTOP_INTEGRATION=1 \
+mkdir -p /app/calibre && \
     CALIBRE_RELEASE=$(curl -s https://api.github.com/repos/kovidgoyal/calibre/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
     CALIBRE_VERSION=${CALIBRE_RELEASE#v} && \
     curl -o /tmp/calibre.txz -L https://download.calibre-ebook.com/${CALIBRE_VERSION}/calibre-${CALIBRE_VERSION}-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/').txz && \
