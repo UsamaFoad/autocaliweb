@@ -29,19 +29,13 @@ RUN useradd -u 911 -U -d /config -s /bin/false abc && \
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --fix-missing --no-install-recommends \
       build-essential libldap2-dev libsasl2-dev \
       curl python3-dev python3-pip \
       imagemagick ghostscript libldap-2.5-0 \
       libmagic1 libsasl2-2 libxi6 libasound2 \
-      libxslt1.1 python3-venv libxtst6 \
-      libxrandr2 libxkbfile1 libxcomposite1 \
-      libopengl0 libnss3 libxkbcommon0 \
-      libegl1 libxdamage1 libgl1 \
-      libglx-mesa0 xz-utils sqlite3 \
-      xdg-utils tzdata inotify-tools \
-      netcat-openbsd binutils zip \
-      fonts-dejavu-core
+      netcat-openbsd binutils zip fonts-dejavu-core && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # debug S6-Overlay url
 RUN echo "Downloading: https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz"
