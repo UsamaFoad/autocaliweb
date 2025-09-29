@@ -89,7 +89,7 @@ RUN export KEPUBIFY_RELEASE=$(curl -s https://api.github.com/repos/pgaskin/kepub
     echo "$KEPUBIFY_RELEASE" >| /app/KEPUBIFY_RELEASE
 
 # Install Calibre binaries
-RUN export CALIBRE_NO_DESKTOP_INTEGRATION=1 \
+RUN export CALIBRE_NO_DESKTOP_INTEGRATION=1 && \
 mkdir -p /app/calibre && \
     CALIBRE_RELEASE=$(curl -s https://api.github.com/repos/kovidgoyal/calibre/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
     CALIBRE_VERSION=${CALIBRE_RELEASE#v} && \
