@@ -32,7 +32,7 @@ RUN apt-get update && \
       build-essential libldap2-dev libsasl2-dev \
       curl python3-dev python3-pip \
       imagemagick ghostscript libldap-2.5-0 \
-      libmagic1 libsasl2-2 libxi6 \
+      libmagic1 libsasl2-2 libxi6 libasound2 \
       libxslt1.1 python3-venv libxtst6 \
       libxrandr2 libxkbfile1 libxcomposite1 \
       libopengl0 libnss3 libxkbcommon0 \
