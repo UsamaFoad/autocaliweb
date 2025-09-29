@@ -88,6 +88,10 @@ RUN export KEPUBIFY_RELEASE=$(curl -s https://api.github.com/repos/pgaskin/kepub
     chmod +x /usr/bin/kepubify && \
     echo "$KEPUBIFY_RELEASE" >| /app/KEPUBIFY_RELEASE
 
+# Fix: Calibre's desktop integration attempt inside a container or CI environment, 
+# where system menu directories are typically unavailable. 
+RUN mkdir /usr/share/desktop-directories/
+
 # Install Calibre binaries
 RUN export CALIBRE_NO_DESKTOP_INTEGRATION=1 && \
 mkdir -p /app/calibre && \
