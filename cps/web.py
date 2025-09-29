@@ -403,7 +403,8 @@ def get_sort_function(sort_param, data):
 
 def acw_get_library_location() -> str:
     dirs = {}
-    with open('/app/autocaliweb/dirs.json', 'r') as f:
+    DIRS_JSON = os.path.join(os.environ.get("ACW_INSTALL_DIR", "/app/autocaliweb"), "dirs.json")
+    with open(DIRS_JSON, 'r') as f:
         dirs: dict[str, str] = json.load(f)
     library_dir = f"{dirs['calibre_library_dir']}/"
     return library_dir
@@ -1619,7 +1620,11 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
             kobo_sync_status.update_on_sync_shelfs(current_user.id)
         current_user.kobo_plus = int(to_save.get("kobo_plus") == "on") or 0
         current_user.kobo_overdrive = int(to_save.get("kobo_overdrive") == "on") or 0
+        current_user.kobo_instapaper = int(to_save.get("kobo_instapaper") == "on") or 0
         current_user.hardcover_token = to_save.get("hardcover_token", "").replace("Bearer ", "") or ""
+        current_user.auto_send_enabled = to_save.get("auto_send_enabled") == "on"
+        current_user.auto_metadata_fetch = to_save.get("auto_metadata_fetch") == "on"
+        
     except Exception as ex:
         flash(str(ex), category="error")
         return render_title_template("user_edit.html",

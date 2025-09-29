@@ -946,8 +946,8 @@ body
 }
 
 body:not(.read-frame) {
-  background-image: url(images/caliblur/blur-noise.png),
-    url(images/caliblur/blur-light.png) !important;
+  background-image: url(images/caliblur/blur-noise.webp),
+    url(images/caliblur/blur-light.webp) !important;
   background-repeat: repeat, no-repeat !important;
   background-attachment: fixed, fixed !important;
   background-position: center center, center center !important;
@@ -956,7 +956,7 @@ body:not(.read-frame) {
   -moz-background-size: auto, cover !important;
   -o-background-size: auto, cover !important;
   line-height: 1.71428571;
-  background: url(images/caliblur/blur-noise.png), var(--color-background);
+  background: url(images/caliblur/blur-noise.webp), var(--color-background);
   color: whitesmoke;
   font-family: Open Sans Semibold, Helvetica Neue, Helvetica, Arial, sans-serif;
   font-weight: 400;
@@ -1447,6 +1447,18 @@ body
   > .glyphicon-dashboard::before {
   content: "\EA31";
   font-family: plex-icons-new, serif;
+  font-size: 20px;
+}
+
+body
+  > div.navbar.navbar-default.navbar-static-top
+  > div
+  > div.navbar-collapse.collapse
+  > ul
+  > li
+  > #top_kosync
+  > .glyphicon-inbox::before {
+  content: "\e028";
   font-size: 20px;
 }
 
@@ -3902,8 +3914,8 @@ a:focus {
   position: fixed;
   top: 60px;
   left: 240px;
-  background-image: url(images/caliblur/blur-noise.png),
-    url(images/caliblur/blur-light.png);
+  background-image: url(images/caliblur/blur-noise.webp),
+    url(images/caliblur/blur-light.webp);
   background-repeat: repeat, no-repeat;
   background-attachment: fixed, fixed;
   background-position: center center, center center;
@@ -5016,7 +5028,7 @@ body
   position: fixed;
   top: 0;
   left: 0;
-  background-image: url(images/caliblur/blur-noise.png) !important;
+  background-image: url(images/caliblur/blur-noise.webp) !important;
   background-repeat: repeat !important;
   background-attachment: fixed !important;
   background-position: center center !important;
@@ -5217,8 +5229,8 @@ body.login
 body.login:not(.read-frame),
 body.shelfcreate,
 body.shelfedit {
-  background-image: url(images/caliblur/blur-noise.png),
-    url(images/caliblur/blur-dark.png) !important;
+  background-image: url(images/caliblur/blur-noise.webp),
+    url(images/caliblur/blur-dark.webp) !important;
 }
 
 body.author .undefined-img,
@@ -5354,8 +5366,8 @@ body.shelfedit {
 }
 
 body.author .undefined-img {
-  background-image: url(images/caliblur/blur-noise.png),
-    url(images/caliblur/blur-light.png) !important;
+  background-image: url(images/caliblur/blur-noise.webp),
+    url(images/caliblur/blur-light.webp) !important;
   background-size: auto, cover !important;
   -webkit-background-size: auto, cover !important;
   -moz-background-size: auto, cover !important;
@@ -6631,8 +6643,8 @@ body.uiconfig.admin
 }
 
 body.admin {
-  background-image: url(images/caliblur/blur-noise.png),
-    url(images/caliblur/blur-dark.png) !important;
+  background-image: url(images/caliblur/blur-noise.webp),
+    url(images/caliblur/blur-dark.webp) !important;
 }
 
 body.admin td {
@@ -6757,21 +6769,21 @@ body:not(.blur):not(.login):not(.me):not(.author):not(.editbook):not(
       from(rgba(0, 0, 0, 0.15)),
       to(rgba(0, 0, 0, 0.15))
     ),
-    url(images/caliblur/blur-noise.png), url(images/caliblur/blur-light.png) !important;
+    url(images/caliblur/blur-noise.webp), url(images/caliblur/blur-light.webp) !important;
   background: -webkit-linear-gradient(
       bottom,
       rgba(0, 0, 0, 0.15),
       rgba(0, 0, 0, 0.15)
     ),
-    url(images/caliblur/blur-noise.png), url(images/caliblur/blur-light.png) !important;
+    url(images/caliblur/blur-noise.webp), url(images/caliblur/blur-light.webp) !important;
   background: -o-linear-gradient(
       bottom,
       rgba(0, 0, 0, 0.15),
       rgba(0, 0, 0, 0.15)
     ),
-    url(images/caliblur/blur-noise.png), url(images/caliblur/blur-light.png) !important;
+    url(images/caliblur/blur-noise.webp), url(images/caliblur/blur-light.webp) !important;
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15)),
-    url(images/caliblur/blur-noise.png), url(images/caliblur/blur-light.png) !important;
+    url(images/caliblur/blur-noise.webp), url(images/caliblur/blur-light.webp) !important;
   background-repeat: no-reapeat, repeat, no-repeat !important;
   background-attachment: fixed, fixed, fixed !important;
   background-position: center center, center center, center center !important;
@@ -6810,8 +6822,8 @@ body:not(.blur):not(.me):not(.author):not(.editbook):not(.upload):not(
   > div.row-fluid
   > div.col-sm-10
   > div.discover:first-of-type:before {
-  background: url(images/caliblur/blur-noise.png) center center fixed,
-    url(images/caliblur/blur-light.png) center center no-repeat fixed !important;
+  background: url(images/caliblur/blur-noise.webp) center center fixed,
+    url(images/caliblur/blur-light.webp) center center no-repeat fixed !important;
   background-size: auto, cover !important;
   -webkit-background-size: auto, cover !important;
   -moz-background-size: auto, cover !important;
@@ -8349,8 +8361,8 @@ body.authorlist .blur-wrapper:after {
 }
 
 #loader {
-  background-image: url(images/caliblur/blur-noise.png),
-    url(images/caliblur/blur-dark.png) !important;
+  background-image: url(images/caliblur/blur-noise.webp),
+    url(images/caliblur/blur-dark.webp) !important;
   background-repeat: repeat, no-repeat !important;
   background-attachment: fixed, fixed !important;
   background-position: center center, center center !important;
@@ -9975,21 +9987,21 @@ label[for="theme"] {
         from(rgba(0, 0, 0, 0.15)),
         to(rgba(0, 0, 0, 0.15))
       ),
-      url(images/caliblur/blur-noise.png), var(--color-background-mobile) !important;
+      url(images/caliblur/blur-noise.webp), var(--color-background-mobile) !important;
     background: -webkit-linear-gradient(
         bottom,
         rgba(0, 0, 0, 0.15),
         rgba(0, 0, 0, 0.15)
       ),
-      url(images/caliblur/blur-noise.png), var(--color-background-mobile) !important;
+      url(images/caliblur/blur-noise.webp), var(--color-background-mobile) !important;
     background: -o-linear-gradient(
         bottom,
         rgba(0, 0, 0, 0.15),
         rgba(0, 0, 0, 0.15)
       ),
-      url(images/caliblur/blur-noise.png), var(--color-background-mobile) !important;
+      url(images/caliblur/blur-noise.webp), var(--color-background-mobile) !important;
     background: linear-gradient(0deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15)),
-      url(images/caliblur/blur-noise.png), var(--color-background-mobile) !important;
+      url(images/caliblur/blur-noise.webp), var(--color-background-mobile) !important;
     width: 100%;
     height: 42px;
     display: block;
@@ -11200,7 +11212,7 @@ div[aria-label="Edit/Delete book"] > .btn-warning > span:before {
 
 @media only screen and (min-width: 768px) {
   body.author:not(.authorlist) .undefined-img {
-    background-image: url(images/caliblur/blur-light.png) !important;
+    background-image: url(images/caliblur/blur-light.webp) !important;
     background-size: cover !important;
     -webkit-background-size: cover !important;
     -moz-background-size: cover !important;
@@ -11927,9 +11939,13 @@ p.acw-settings-disclaimer {
 select.acw-settings-select {
   color: #e9e9e9;
   text-align: center;
-  border-radius: 6px;
-  width: 8rem;
-  background-color: #151e26 !important;
+  border-radius: 4px;
+  width: fit-content;
+  background-color: #151e2680 !important;
+  border: 1px transparent;
+  padding: 0.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 .progress-container {
@@ -12057,8 +12073,9 @@ body.edituser .well {
   padding: 0 !important;
 }
 
-body.me .modal-content,
-body.edituser .modal-content {
+#modal_kobo_token,
+#kobo_tokenModalLabel,
+#generateCoverModal {
   top: 60px;
 }
 

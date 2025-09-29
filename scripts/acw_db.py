@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import sys
 from sqlite3 import Error as sqlError
@@ -12,10 +13,11 @@ class ACW_DB:
         self.verbose = verbose
 
         self.db_file = "acw.db"
-        self.db_path = "/config/"
+        install_dir = os.environ.get("ACW_INSTALL_DIR", "/app/autocaliweb")
+        self.db_path = os.environ.get("ACW_CONFIG_DIR", "/config")
         self.con, self.cur = self.connect_to_db() # type: ignore
 
-        self.schema_path = "/app/autocaliweb/scripts/acw_schema.sql"
+        self.schema_path = os.path.join(install_dir, "scripts", "acw_schema.sql")
         self.stats_tables = ["acw_enforcement", "acw_import", "acw_conversions", "epub_fixes"]
         self.tables, self.schema = self.make_tables()
 
@@ -30,7 +32,7 @@ class ACW_DB:
         con = None
         cur = None
         try:
-            con = sqlite3.connect(self.db_path + self.db_file)
+            con = sqlite3.connect(os.path.join(self.db_path, self.db_file))
         except sqlError as e:
             print(f"[acw-db]: The following error occurred while trying to connect to the ACW Enforcement DB: {e}")
             sys.exit(0)
@@ -118,7 +120,7 @@ class ACW_DB:
                 try:
                     command = line.replace('\n', '').strip()
                     command = command.replace(',', ';')
-                    with open('/config/.acw_db_debug', 'a') as f:
+                    with open(os.path.join(self.db_path, '.acw_db_debug'), 'a') as f:
                         f.write(command)
                     self.cur.execute(f"ALTER TABLE acw_settings ADD {command}")  
                     self.con.commit()
@@ -227,10 +229,13 @@ class ACW_DB:
         headers = [header[0] for header in self.cur.description]
         acw_settings = [dict(zip(headers,row)) for row in self.cur.fetchall()][0]
 
+        integer_settings = ['ingest_timeout_minutes', 'auto_send_delay_minutes']
+        json_settings = ['metadata_provider_hierarchy']
+
         for header in headers:
-            if type(acw_settings[header]) == int:
+            if isinstance(acw_settings[header], int) and header not in integer_settings:
                 acw_settings[header] = bool(acw_settings[header])
-            elif type(acw_settings[header]) == str and ',' in acw_settings[header]:
+            elif isinstance(acw_settings[header], str) and ',' in acw_settings[header] and header not in json_settings:
                 acw_settings[header] = acw_settings[header].split(',')
 
         return acw_settings
@@ -242,10 +247,8 @@ class ACW_DB:
             if setting == "auto_convert_ignored_formats" or setting == "auto_ingest_ignored_formats":
                 result[setting] = ','.join(result[setting])
 
-            if type(result[setting]) == int:
-                self.cur.execute(f"UPDATE acw_settings SET {setting}={result[setting]};")
-            else:
-                self.cur.execute(f'UPDATE acw_settings SET {setting}="{result[setting]}";')
+            # Use parameterized queries to safely handle non-English characters and special characters
+            self.cur.execute(f'UPDATE acw_settings SET {setting}=?;', (result[setting],))
             self.con.commit()
         self.set_default_settings()
 

@@ -19,7 +19,7 @@ from acw_db import ACW_DB
 from kindle_epub_fixer import EPUBFixer
 
 ### Global Variables
-convert_library_log_file = "/config/convert-library.log"
+convert_library_log_file = os.path.join(os.environ.get("ACW_CONFIG_DIR", "/config"), "convert-library.log")
 
 # Define the logger
 logger = logging.getLogger(__name__)
@@ -34,8 +34,9 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # Define user and group
-USER_NAME = "abc"
-GROUP_NAME = "abc"
+USER_NAME = os.environ.get("ACW_USER", "abc")
+GROUP_NAME = os.environ.get("ACW_GROUP", "abc")
+owner_group_string = f"{USER_NAME}:{GROUP_NAME}"
 
 # Get UID and GID
 uid = pwd.getpwnam(USER_NAME).pw_uid
@@ -73,7 +74,7 @@ atexit.register(removeLock)
 
 backup_destinations = {
         entry.name: entry.path
-        for entry in os.scandir("/config/processed_books")
+        for entry in os.scandir(os.path.join(os.environ.get("ACW_CONFIG_DIR", "/config"), "processed_books"))
         if entry.is_dir()
     }
 
@@ -93,19 +94,20 @@ class LibraryConverter:
         self.hierarchy_of_success = {'epub', 'lit', 'mobi', 'azw', 'azw3', 'fb2', 'fbz', 'azw4', 'prc', 'odt', 'lrf', 'pdb',  'cbz', 'pml', 'rb', 'cbr', 'cb7', 'cbc', 'chm', 'djvu', 'snb', 'tcr', 'pdf', 'docx', 'rtf', 'html', 'htmlz', 'txtz', 'txt'}
 
         self.current_book = 1
-        self.ingest_folder, self.library_dir, self.tmp_conversion_dir = self.get_dirs('/app/autocaliweb/dirs.json') 
-        self.to_convert = self.get_books_to_convert()
+        self.ingest_folder, self.library_dir, self.tmp_conversion_dir = self.get_dirs(os.path.join(os.environ.get("ACW_INSTALL_DIR", "/app/autocaliweb"), "dirs.json")) 
 
         self.calibre_env = os.environ.copy()
-        self.calibre_env["HOME"] = "/config"
+        self.calibre_env["HOME"] = os.environ.get("ACW_CONFIG_DIR", "/config")
 
         self.split_library = self.get_split_library()
         if self.split_library:
             self.library_dir = self.split_library['split_path']
             self.calibre_env["CALIBRE_OVERRIDE_DATABASE_PATH"] = os.path.join(self.split_library['db_path'], 'metadata.db')
+        
+        self.to_convert = self.get_books_to_convert()
 
     def get_split_library(self) -> dict[str, str] | None:
-        con = sqlite3.connect('/config/app.db')
+        con = sqlite3.connect(os.path.join(os.environ.get("ACW_CONFIG_DIR", "/config"), "app.db"))
         cur = con.cursor()
         split_library = cur.execute("SELECT config_calibre_split FROM settings;").fetchone()[0]
 
@@ -131,29 +133,68 @@ class LibraryConverter:
         tmp_conversion_dir = f"{dirs['tmp_conversion_dir']}/"
 
         return ingest_folder, library_dir, tmp_conversion_dir
+    
+
+    def get_library_book_formats(self) -> dict[int, list[str]]:
+        """Returns a dictionary of formats for all books in the library.
+        The key is the book ID and the value is a list of format paths."""
+        try:
+            args = ["calibredb", "list", "--fields=id,formats", f"--library-path={self.library_dir}", "--for-machine"]
+            cmd = subprocess.run(
+                args,
+                env=self.calibre_env,
+                capture_output=True,
+                check=True,
+                text=True,
+                encoding='utf-8'
+            )
+
+            book_formats = {}
+            for book in json.loads(cmd.stdout):
+                book_formats[book['id']] = book['formats']
+
+        except subprocess.CalledProcessError as e:
+            print_and_log(f"[convert-library]: An error occurred while running command {' '.join(args)}: {e}")
+            return {}
+        except json.JSONDecodeError as e:
+            print_and_log(f"[convert-library]: Failed to parse \"{args[0]}\" command output as JSON: {e}")
+            print_and_log(f"[convert-library]: Raw output: {cmd.stdout}")
+            return {}
+        except Exception as e:
+            print_and_log(f"[convert-library]: Unexpected error retrieving book formats: {e}")
+            return {}
+
+        return book_formats
 
 
     def get_books_to_convert(self):
-        library_files = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(self.library_dir) for f in filenames]
+        """Returns a list of book format paths to convert."""
+        library_formats = self.get_library_book_formats()
 
-        exclusion_list = [] # If multiple formats for a book exist, only the one with the highest success rate will be converted and the rest will be left alone
-        files_already_in_target_format = [f for f in library_files if f.endswith(f'.{self.target_format}')]
-        for file in files_already_in_target_format:
-            filename, file_extension = os.path.splitext(file)
-            exclusion_list.append(filename) # Adding books with a file already in the target format to the exclusion list
-        
-        to_convert = [] # Will only contain a single filepath for each book without an existing file in the target format in the format with the highest available conversion success rate, where that filepath is allow to be converted
-        for format in self.hierarchy_of_success:
-            if format in self.convert_ignored_formats:
-                print_and_log(f"{format} in list of user-defined ignored formats for conversion. To change this, navigate to the ACW Settings panel from the Settings page in the Web UI.")
-                continue
-            files_in_format = [f for f in library_files if f.endswith(f'.{format}')]
-            if len(files_in_format) > 0:
-                for file in files_in_format:
-                    filename, file_extension = os.path.splitext(file)
-                    if filename not in exclusion_list:
-                        to_convert.append(file)
-                        exclusion_list.append(filename)
+        # Filter out books already in the target format.
+        already_in_target_format = [id for id in library_formats for format in library_formats[id] if format.endswith(f'.{self.target_format}')]
+        books_to_convert = [id for id in library_formats if id not in already_in_target_format]
+
+        # Filter out source formats the user chose to ignore.
+        hierarchy_of_success_formats = [format for format in self.hierarchy_of_success if format not in self.convert_ignored_formats]
+
+        if self.convert_ignored_formats:
+            print_and_log(f"{', '.join(self.convert_ignored_formats)} in list of user-defined ignored formats for conversion. To change this, navigate to the CWA Settings panel from the Settings page in the Web UI.")
+
+        # Will only contain a single filepath for each book without an existing file in
+        # the target format in the format with the highest available conversion success
+        # rate, where that filepath is allow to be converted
+        to_convert = []
+
+        for book in books_to_convert:
+            book_formats = library_formats[book]
+            # If multiple formats for a book exist, only the one with the highest
+            # success rate will be converted and the rest will be left alone
+            for format in hierarchy_of_success_formats:
+                source_format = [filepath for filepath in book_formats if filepath.endswith(format)]
+                if len(source_format) > 0:
+                    to_convert.append(source_format[0])
+                    break
 
         return to_convert
 
@@ -251,9 +292,9 @@ class LibraryConverter:
 
                 print_and_log(f"[convert-library]: ({self.current_book}/{len(self.to_convert)}) Import of {os.path.basename(target_filepath)} successfully completed!")
             except subprocess.CalledProcessError as e:
-                print_and_log(f"[convert-library]: ({self.current_book}/{len(self.to_convert)}) Import of {os.path.basename(target_filepath)} was not successfully completed. Converted file moved to /config/processed_books/failed/{os.path.basename(target_filepath)}. See the following error:\n{e}")
+                print_and_log(f"[convert-library]: ({self.current_book}/{len(self.to_convert)}) Import of {os.path.basename(target_filepath)} was not successfully completed. Converted file moved to {os.path.join(os.environ.get('ACW_CONFIG_DIR', '/config'), 'processed_books', 'failed', os.path.basename(target_filepath))}. See the following error:\n{e}")
                 try:
-                    output_path = f"/config/processed_books/failed/{os.path.basename(target_filepath)}"
+                    output_path = os.path.join(os.environ.get('ACW_CONFIG_DIR', '/config'), 'processed_books', 'failed', os.path.basename(target_filepath))
                     shutil.move(target_filepath, output_path)
                 except Exception as e:
                     print_and_log(f"[convert-library]: ERROR - The following error occurred when trying to copy {file} to {output_path}:\n{e}")
@@ -348,10 +389,10 @@ class LibraryConverter:
 
     def set_library_permissions(self):
         try:
-            subprocess.run(["chown", "-R", "abc:abc", self.library_dir], check=True)
-            print_and_log(f"[convert-library]: ({self.current_book}/{len(self.to_convert)}) Successfully set ownership of new files in {self.library_dir} to abc:abc.")
+            subprocess.run(["chown", "-R", owner_group_string, self.library_dir], check=True)
+            print_and_log(f"[convert-library]: ({self.current_book}/{len(self.to_convert)}) Successfully set ownership of new files in {self.library_dir} to owner_group_string.")
         except subprocess.CalledProcessError as e:
-            print_and_log(f"[convert-library]: ({self.current_book}/{len(self.to_convert)}) An error occurred while attempting to recursively set ownership of {self.library_dir} to abc:abc. See the following error:\n{e}")
+            print_and_log(f"[convert-library]: ({self.current_book}/{len(self.to_convert)}) An error occurred while attempting to recursively set ownership of {self.library_dir} to owner_group_string. See the following error:\n{e}")
 
 
 def main():
@@ -368,7 +409,7 @@ def main():
     if len(converter.to_convert) > 0:
         converter.convert_library()
     else:
-        print_and_log("[convert-library]: No books found in library without a copy in the target format. Exiting now...")
+        print_and_log(f"[convert-library]: No books found in library without a copy in the target format ({converter.target_format}). Exiting now...")
         logger.info(f"\nAutocaliweb Convert Library Service - Run Ended: {datetime.now()}")
         sys.exit(0)
 

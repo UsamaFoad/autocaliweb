@@ -177,7 +177,7 @@ def HandleSyncRequest():
             synced_books_query = ub.session.query(ub.KoboSyncedBooks.book_id).filter(ub.KoboSyncedBooks.user_id == current_user.id)
             synced_books_ids = {item.book_id for item in synced_books_query}
 
-            allowed_books_query = ub.session.query(ub.BookShelf.book_id).join(ub.Shelf, ub.BookShelf.shelf_id == ub.Shelf.id).filter(ub.Shelf.user_id == current_user.id, ub.Shelf.kobo_sync == True)
+            allowed_books_query = ub.session.query(ub.BookShelf.book_id).join(ub.Shelf, ub.BookShelf.id == ub.Shelf.id).filter(ub.Shelf.user_id == current_user.id, ub.Shelf.kobo_sync == True)
             allowed_books_ids = {item.book_id for item in allowed_books_query}
 
             book_ids_to_delete = synced_books_ids - allowed_books_ids
@@ -228,9 +228,6 @@ def HandleSyncRequest():
                            .filter(ub.BookShelf.date_added > sync_token.books_last_modified)
                            .filter(db.Data.format.in_(KOBO_FORMATS))
                            .filter(calibre_db.common_filters(allow_show_archived=True))
-                           .order_by(db.Books.last_modified)
-                           .order_by(db.Books.id)
-                           .order_by(ub.ArchivedBook.last_modified)
                            .join(ub.BookShelf, db.Books.id == ub.BookShelf.book_id)
                            .join(ub.Shelf)
                            .filter(ub.Shelf.user_id == current_user.id)
@@ -265,7 +262,7 @@ def HandleSyncRequest():
         changed_entries = (
             shelf_entries
             .union_all(deleted_entries)
-            .order_by(db.Books.id, ub.ArchivedBook.last_modified)
+            .order_by(db.Books.id, db.Books.last_modified, ub.ArchivedBook.last_modified)
         )
 
     else:
@@ -645,11 +642,11 @@ def HandleTagUpdate(tag_id):
     shelf = ub.session.query(ub.Shelf).filter(ub.Shelf.uuid == tag_id,
                                               ub.Shelf.user_id == current_user.id).one_or_none()
     if not shelf:
-        log.debug("Received Kobo tag update request on a collection unknown to CalibreWeb")
+        log.debug("Received Kobo tag update request on a collection unknown to Autocaliweb")
         if config.config_kobo_proxy:
             return redirect_or_proxy_request()
         else:
-            abort(404, description="Collection isn't known to CalibreWeb")
+            abort(404, description="Collection isn't known to Autocaliweb")
 
     if request.method == "DELETE":
         if not shelf_lib.delete_shelf_helper(shelf):
@@ -707,8 +704,8 @@ def HandleTagAddItem(tag_id):
     shelf = ub.session.query(ub.Shelf).filter(ub.Shelf.uuid == tag_id,
                                               ub.Shelf.user_id == current_user.id).one_or_none()
     if not shelf:
-        log.debug("Received Kobo request on a collection unknown to CalibreWeb")
-        abort(404, description="Collection isn't known to CalibreWeb")
+        log.debug("Received Kobo request on a collection unknown to Autocaliweb")
+        abort(404, description="Collection isn't known to Autocaliweb")
 
     if not shelf_lib.check_shelf_edit_permissions(shelf):
         abort(401, description="User is unauthaurized to edit shelf.")
@@ -738,8 +735,8 @@ def HandleTagRemoveItem(tag_id):
                                               ub.Shelf.user_id == current_user.id).one_or_none()
     if not shelf:
         log.debug(
-            "Received a request to remove an item from a Collection unknown to CalibreWeb.")
-        abort(404, description="Collection isn't known to CalibreWeb")
+            "Received a request to remove an item from a Collection unknown to Autocaliweb.")
+        abort(404, description="Collection isn't known to Autocaliweb")
 
     if not shelf_lib.check_shelf_edit_permissions(shelf):
         abort(401, description="User is unauthaurized to edit shelf.")
@@ -1134,7 +1131,7 @@ def HandleProductsRequest(dummy=None):
 
 
 def make_calibre_web_auth_response():
-    # As described in kobo_auth.py, CalibreWeb doesn't make use practical use of this auth/device API call for
+    # As described in kobo_auth.py, Autocaliweb doesn't make use practical use of this auth/device API call for
     # authentation (nor for authorization). We return a dummy response just to keep the device happy.
     content = request.get_json()
     AccessToken = base64.b64encode(os.urandom(24)).decode('utf-8')
@@ -1186,6 +1183,7 @@ def HandleInitRequest():
         try:
             plus_enabled = bool(getattr(current_user, "kobo_plus", False))
             borrow_enabled = bool(getattr(current_user, "kobo_overdrive", False))
+            ip_enabled = bool(getattr(current_user, "kobo_instapaper", False))
         except AttributeError:
             pass
 
@@ -1219,6 +1217,15 @@ def HandleInitRequest():
                                                                isGreyscale='false'))
         kobo_resources["kobo_subscriptions_enabled"] = plus_enabled
         kobo_resources["kobo_nativeborrow_enabled"] = borrow_enabled
+        kobo_resources["instapaper_enabled"] = ip_enabled
+        if ip_enabled:
+            log.debug('Kobo: Instapaper integration enabled, checking endpoints')
+            if kobo_resources["instapaper_env_url"] != "https://www.instapaper.com/api/kobo":
+                log.debug('Kobo: Changed instapaper_env_url to "https://www.instapaper.com/api/kobo"')
+                kobo_resources["instapaper_env_url"] = "https://www.instapaper.com/api/kobo"
+            if kobo_resources["instapaper_link_account_start"] != "https://authorize.kobo.com/{region}/{language}/linkinstapaper":
+                log.debug('Kobo: Changed instapaper_link_account_start to "https://authorize.kobo.com/{region}/{language}/linkinstapaper"')
+                kobo_resources["instapaper_link_account_start"] = "https://authorize.kobo.com/{region}/{language}/linkinstapaper"
     else:
         kobo_resources["image_host"] = url_for("web.index", _external=True).strip("/")
         kobo_resources["image_url_quality_template"] = unquote(url_for("kobo.HandleCoverImageRequest",
@@ -1238,6 +1245,15 @@ def HandleInitRequest():
                                                                _external=True))
         kobo_resources["kobo_subscriptions_enabled"] = plus_enabled
         kobo_resources["kobo_nativeborrow_enabled"] = borrow_enabled
+        kobo_resources["instapaper_enabled"] = ip_enabled
+        if ip_enabled:
+            log.debug('Kobo: Instapaper integration enabled, checking endpoints')
+            if kobo_resources["instapaper_env_url"] != "https://www.instapaper.com/api/kobo":
+                log.debug('Kobo: Changed instapaper_env_url to "https://www.instapaper.com/api/kobo"')
+                kobo_resources["instapaper_env_url"] = "https://www.instapaper.com/api/kobo"
+            if kobo_resources["instapaper_link_account_start"] != "https://authorize.kobo.com/{region}/{language}/linkinstapaper":
+                log.debug('Kobo: Changed instapaper_link_account_start to "https://authorize.kobo.com/{region}/{language}/linkinstapaper"')
+                kobo_resources["instapaper_link_account_start"] = "https://authorize.kobo.com/{region}/{language}/linkinstapaper"
 
     response = make_response(jsonify({"Resources": kobo_resources}))
     response.headers["x-kobo-apitoken"] = "e30="
@@ -1323,6 +1339,9 @@ def NATIVE_KOBO_RESOURCES():
         "image_host": "//cdn.kobo.com/book-images/",
         "image_url_quality_template": "https://cdn.kobo.com/book-images/{ImageId}/{Width}/{Height}/{Quality}/{IsGreyscale}/image.jpg",
         "image_url_template": "https://cdn.kobo.com/book-images/{ImageId}/{Width}/{Height}/false/image.jpg",
+        "instapaper_enabled": "False",
+        "instapaper_env_url": "https://www.instapaper.com/api/kobo",
+        "instapaper_link_account_start": "https://authorize.kobo.com/{region}/{language}/linkinstapaper",
         "kobo_audiobooks_credit_redemption": "False",
         "kobo_audiobooks_enabled": "True",
         "kobo_audiobooks_orange_deal_enabled": "False",

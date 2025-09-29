@@ -13,7 +13,60 @@ from acw_db import ACW_DB
 from kindle_epub_fixer import EPUBFixer
 import audiobook
 
+# Optional: enable GDrive sync and auto-send by importing cps modules when available
+_GDRIVE_AVAILABLE = False
+_CPS_AVAILABLE = False
+_gdriveutils = None
+_cps_config = None
+fetch_and_apply_metadata = None
+TaskAutoSend = None
+WorkerThread = None
+_ub = None
 
+try:
+    # Ensure project root is on sys.path to import cps
+    cps_path = os.path.dirname(os.path.dirname(__file__))
+    if cps_path not in sys.path:
+        sys.path.append(cps_path)
+    
+    # Import GDrive functionality
+    try:
+        from cps import gdriveutils as _gdriveutils, config as _cps_config
+        _GDRIVE_AVAILABLE = True
+        print("[ingest-processor] GDrive functionality available", flush=True)
+    except ImportError as e:
+        print(f"[ingest-processor] GDrive functionality not available: {e}", flush=True)
+        _gdriveutils = None
+        _cps_config = None
+
+    # Import auto-send and metadata functionality
+    try:
+        from cps.metadata_helper import fetch_and_apply_metadata
+        from cps.tasks.auto_send import TaskAutoSend
+        from cps.services.worker import WorkerThread
+        from cps import ub as _ub
+        _CPS_AVAILABLE = True
+        print("[ingest-processor] Auto-send and metadata functionality available", flush=True)
+    except ImportError as e:
+        print(f"[ingest-processor] Auto-send/metadata functionality not available: {e}", flush=True)
+        fetch_and_apply_metadata = None
+        TaskAutoSend = None
+        WorkerThread = None
+        _ub = None
+
+except Exception as e:
+    print(f"[ingest-processor] WARN: Unexpected error during CPS module import: {e}", flush=True)
+    _GDRIVE_AVAILABLE = False
+    _CPS_AVAILABLE = False
+
+def gdrive_sync_if_enabled():
+    """Sync Calibre library to Google Drive if enabled in app config."""
+    if _GDRIVE_AVAILABLE and getattr(_cps_config, "config_use_google_drive", False):
+        try:
+            _gdriveutils.updateGdriveCalibreFromLocal()
+            print("[ingest-processor] GDrive sync completed.", flush=True)
+        except Exception as e:
+            print(f"[ingest-processor] WARN: GDrive sync failed: {e}", flush=True)
 
 # Creates a lock file unless one already exists meaning an instance of the script is
 # already running, then the script is closed, the user is notified and the program
@@ -35,7 +88,7 @@ atexit.register(removeLock)
 # Generates dictionary of available backup directories and their paths
 backup_destinations = {
         entry.name: entry.path
-        for entry in os.scandir("/config/processed_books")
+        for entry in os.scandir(os.path.join(os.environ.get("ACW_CONFIG_DIR", "/config"), "processed_books"))
         if entry.is_dir()
     }
 
@@ -69,6 +122,9 @@ class NewBookProcessor:
     def __init__(self, filepath: str):
         self.db = ACW_DB()
         self.acw_settings = self.db.acw_settings
+        USER_NAME = os.environ.get("ACW_USER", "abc")
+        GROUP_NAME = os.environ.get("ACW_GROUP", "abc")
+        self.owner_group_string = f"{USER_NAME}:{GROUP_NAME}"
 
         self.auto_convert_on = self.acw_settings['auto_convert']
         self.target_format = self.acw_settings['auto_convert_target_format']
@@ -77,14 +133,17 @@ class NewBookProcessor:
         if isinstance(self.ingest_ignored_formats, str):
             self.ingest_ignored_formats = [self.ingest_ignored_formats]
 
-        self.ingest_ignored_formats.extend(['.crdownload', '.part', '.download'])
+        for tmp_ext in ("crdownload", "download", "part", "uploading", "temp"):
+            if tmp_ext not in self.ingest_ignored_formats:
+                self.ingest_ignored_formats.extend(tmp_ext)
+
         self.convert_ignored_formats = self.acw_settings['auto_convert_ignored_formats']
         self.is_kindle_epub_fixer = self.acw_settings['kindle_epub_fixer']
 
         self.supported_book_formats = {'azw', 'azw3', 'azw4', 'cbz', 'cbr', 'cb7', 'cbc', 'chm', 'djvu', 'docx', 'epub', 'fb2', 'fbz', 'html', 'htmlz', 'lit', 'lrf', 'mobi', 'odt', 'pdf', 'prc', 'pdb', 'pml', 'rb', 'rtf', 'snb', 'tcr', 'txtz', 'txt', 'kepub'}
         self.hierarchy_of_success = {'epub', 'lit', 'mobi', 'azw', 'epub', 'azw3', 'fb2', 'fbz', 'azw4',  'prc', 'odt', 'lrf', 'pdb',  'cbz', 'pml', 'rb', 'cbr', 'cb7', 'cbc', 'chm', 'djvu', 'snb', 'tcr', 'pdf', 'docx', 'rtf', 'html', 'htmlz', 'txtz', 'txt'}
         self.supported_audiobook_formats = {'m4a', 'm4b', 'mp4'}
-        self.ingest_folder, self.library_dir, self.tmp_conversion_dir = self.get_dirs("/app/autocaliweb/dirs.json")
+        self.ingest_folder, self.library_dir, self.tmp_conversion_dir = self.get_dirs(os.path.join(os.environ.get("ACW_INSTALL_DIR", "/app/autocaliweb"), "dirs.json"))
 
         # Create the tmp_conversion_dir if it does not already exist
         Path(self.tmp_conversion_dir).mkdir(exist_ok=True)
@@ -95,7 +154,7 @@ class NewBookProcessor:
         self.can_convert, self.input_format = self.can_convert_check()
 
         self.calibre_env = os.environ.copy()
-        self.calibre_env['HOME'] = "/config"
+        self.calibre_env['HOME'] = os.environ.get("ACW_CONFIG_DIR", "/config")
 
         self.split_library = self.get_split_library()
         if self.split_library:
@@ -103,7 +162,7 @@ class NewBookProcessor:
             self.calibre_env["CALIBRE_OVERRIDE_DATABASE_PATH"] = os.path.join(self.split_library['db_path'], 'metadata.db')
 
     def get_split_library(self) -> dict[str, str] | None:
-        con = sqlite3.connect(f"/config/app.db")
+        con = sqlite3.connect(os.path.join(os.environ.get("ACW_CONFIG_DIR", "/config"), "app.db"))
         cur = con.cursor()
         split_library = cur.execute("SELECT config_calibre_split FROM settings;").fetchone()[0]
 
@@ -151,7 +210,7 @@ class NewBookProcessor:
         try:
             output_path = backup_destinations[backup_type]
         except Exception as e:
-            print(f"[ingest-processor] The following error occurred when trying to fetch the available backup dirs in /config/processed_books:\n{e}")
+            print(f"[ingest-processor] The following error occurred when trying to fetch the available backup dirs in {os.path.join(os.environ.get('ACW_CONFIG_DIR', '/config'), 'processed_books')}:\n{e}")
         try:
             shutil.copy2(input_file, output_path)
         except Exception as e:
@@ -233,9 +292,24 @@ class NewBookProcessor:
 
     def delete_current_file(self) -> None:
         """Deletes file just processed from ingest folder"""
-        os.remove(self.filepath) # Removes processed file
-        if not os.path.samefile(os.path.dirname(self.filepath), self.ingest_folder): # File is not on ingest_folder, subdirectories to delete
-            subprocess.run(["find", f"{os.path.dirname(self.filepath)}", "-type", "d", "-empty", "-delete"]) # Removes any now empty folders including the parent directory
+        try:
+            if os.path.exists(self.filepath):
+                os.remove(self.filepath)
+            else:
+                # Likely a transient or temporary file that was renamed before we processed cleanup
+                print(f"[ingest-processor]: Skipping delete; file already gone: {self.filepath}", flush=True)
+                return
+            
+            parent_dir = os.path.dirname(self.filepath)
+            if os.path.isdir(parent_dir) and os.path.exists(parent_dir):
+                try:
+                    if os.path.exists(self.ingest_folder) and os.path.normpath(parent_dir) != self.ingest_folder:
+                        subprocess.run(["find", f"{parent_dir}", "-type", "d", "-empty", "-delete"], check=True)
+                except Exception as e:
+                    print(f"[ingest-processor]: WARN: Failed pruning empty folders for {parent_dir}: {e}", flush=True)
+        
+        except Exception as e:
+            print(f"[ingest-processor]: WARN: Failed to delete processed file {self.filepath}: {e}", flush=True)
 
 
     def add_book_to_library(self, book_path:str, text: bool=True, format: str="text") -> None:
@@ -292,6 +366,12 @@ class NewBookProcessor:
 
             self.db.import_add_entry(import_path.stem,
                                     str(self.acw_settings["auto_backup_imports"]))
+            
+            gdrive_sync_if_enabled()
+
+            self.fetch_metadata_if_enabled(import_path.stem)
+
+            self.trigger_auto_send_if_enabled(import_path.stem, book_path)
 
         except subprocess.CalledProcessError as e:
             print(f"[ingest-processor] {import_path.stem} was not able to be added to the Calibre Library due to the following error:\nCALIBREDB EXIT/ERROR CODE: {e.returncode}\n{e.stderr}", flush=True)
@@ -308,6 +388,108 @@ class NewBookProcessor:
             print(f"[ingest-processor] An error occurred while processing {os.path.basename(filepath)} with the kindle-epub-fixer. See the following error:\n{e}")
 
 
+    def fetch_metadata_if_enabled(self, book_title: str) -> None:
+        """Fetch and apply metadata for newly ingested books if enabled"""
+        if not _CPS_AVAILABLE:
+            print("[ingest-processor] CPS modules not available, skipping metadata fetch", flush=True)
+            return
+            
+        if fetch_and_apply_metadata is None:
+            print("[ingest-processor] Metadata helper not available, skipping metadata fetch", flush=True)
+            return
+            
+        try:
+            # Find the book that was just added to get its ID
+            calibre_db_path = os.path.join(self.library_dir, 'metadata.db')
+            with sqlite3.connect(calibre_db_path, timeout=30) as con:
+                cur = con.cursor()
+                # Get the most recently added book with this title
+                cur.execute("SELECT id, title FROM books WHERE title LIKE ? ORDER BY timestamp DESC LIMIT 1", (f"%{book_title}%",))
+                result = cur.fetchone()
+                
+            if not result:
+                print(f"[ingest-processor] Could not find book ID for metadata fetch: {book_title}", flush=True)
+                return
+                
+            book_id = result[0]
+            actual_title = result[1]
+            
+            print(f"[ingest-processor] Attempting to fetch metadata for: {actual_title}", flush=True)
+            
+            # Fetch and apply metadata (now admin-controlled only)
+            if fetch_and_apply_metadata(book_id):
+                print(f"[ingest-processor] Successfully fetched and applied metadata for: {actual_title}", flush=True)
+            else:
+                print(f"[ingest-processor] No metadata improvements found for: {actual_title}", flush=True)
+                
+        except Exception as e:
+            print(f"[ingest-processor] Error fetching metadata: {e}", flush=True)
+
+
+    def trigger_auto_send_if_enabled(self, book_title: str, book_path: str) -> None:
+        """Trigger auto-send for users who have it enabled"""
+        if not _CPS_AVAILABLE:
+            print("[ingest-processor] CPS modules not available, skipping auto-send", flush=True)
+            return
+            
+        if TaskAutoSend is None or WorkerThread is None:
+            print("[ingest-processor] Auto-send functionality not available, skipping auto-send", flush=True)
+            return
+            
+        try:
+            # Find the book that was just added to get its ID
+            calibre_db_path = os.path.join(self.library_dir, 'metadata.db')
+            with sqlite3.connect(calibre_db_path, timeout=30) as con:
+                cur = con.cursor()
+                # Get the most recently added book(s) with this title
+                cur.execute("SELECT id, title FROM books WHERE title LIKE ? ORDER BY timestamp DESC LIMIT 1", (f"%{book_title}%",))
+                result = cur.fetchone()
+                
+            if not result:
+                print(f"[ingest-processor] Could not find book ID for auto-send: {book_title}", flush=True)
+                return
+                
+            book_id = result[0]
+            actual_title = result[1]
+            
+            # Get users with auto-send enabled
+            app_db_path = "/config/app.db"
+            with sqlite3.connect(app_db_path, timeout=30) as con:
+                cur = con.cursor()
+                cur.execute("""
+                    SELECT id, name, kindle_mail 
+                    FROM user 
+                    WHERE auto_send_enabled = 1 
+                    AND kindle_mail IS NOT NULL 
+                    AND kindle_mail != ''
+                """)
+                auto_send_users = cur.fetchall()
+                
+            if not auto_send_users:
+                print(f"[ingest-processor] No users with auto-send enabled found", flush=True)
+                return
+                
+            # Queue auto-send tasks for each user
+            for user_id, username, kindle_mail in auto_send_users:
+                try:
+                    delay_minutes = self.acw_settings.get('auto_send_delay_minutes', 5)
+                    
+                    # Create auto-send task
+                    task_message = f"Auto-sending '{actual_title}' to {username}'s eReader(s)"
+                    task = TaskAutoSend(task_message, book_id, user_id, delay_minutes)
+                    
+                    # Add to worker queue
+                    WorkerThread.add(username, task)
+                    
+                    print(f"[ingest-processor] Queued auto-send for '{actual_title}' to user {username} ({kindle_mail})", flush=True)
+                    
+                except Exception as e:
+                    print(f"[ingest-processor] Error queuing auto-send for user {username}: {e}", flush=True)
+                    
+        except Exception as e:
+            print(f"[ingest-processor] Error in auto-send trigger: {e}", flush=True)
+
+
     def empty_tmp_con_dir(self):
         try:
             files = os.listdir(self.tmp_conversion_dir)
@@ -320,9 +502,9 @@ class NewBookProcessor:
 
     def set_library_permissions(self):
         try:
-            subprocess.run(["chown", "-R", "abc:abc", self.library_dir], check=True)
+            subprocess.run(["chown", "-R", self.owner_group_string, self.library_dir], check=True)
         except subprocess.CalledProcessError as e:
-            print(f"[ingest-processor] An error occurred while attempting to recursively set ownership of {self.library_dir} to abc:abc. See the following error:\n{e}", flush=True)
+            print(f"[ingest-processor] An error occurred while attempting to recursively set ownership of {self.library_dir} to owner_group_string. See the following error:\n{e}", flush=True)
 
 
 def main(filepath=sys.argv[1]):

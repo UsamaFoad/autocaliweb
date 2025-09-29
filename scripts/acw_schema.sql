@@ -42,7 +42,12 @@ CREATE TABLE IF NOT EXISTS acw_settings(
     auto_convert_ignored_formats TEXT DEFAULT "" NOT NULL,
     auto_ingest_ignored_formats TEXT DEFAULT "" NOT NULL,
     auto_ingest_automerge TEXT DEFAULT "new_record" NOT NULL,
+    ingest_timeout_minutes INTEGER DEFAULT 15 NOT NULL,
     auto_metadata_enforcement SMALLINT DEFAULT 1 NOT NULL,
     kindle_epub_fixer SMALLINT DEFAULT 1 NOT NULL,
-    auto_backup_epub_fixes SMALLINT DEFAULT 1 NOT NULL
+    auto_backup_epub_fixes SMALLINT DEFAULT 1 NOT NULL,
+    auto_metadata_fetch_enabled SMALLINT DEFAULT 0 NOT NULL,
+    auto_metadata_smart_application SMALLINT DEFAULT 0 NOT NULL,
+    metadata_provider_hierarchy TEXT DEFAULT '["ibdb","google","dnb"]' NOT NULL,
+    auto_send_delay_minutes INTEGER DEFAULT 5 NOT NULL
 );

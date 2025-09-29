@@ -43,10 +43,8 @@ from sqlalchemy.exc import IntegrityError, OperationalError, InvalidRequestError
 from sqlalchemy.sql.expression import func, or_, text
 
 from . import constants, logger, helper, services, cli_param
-from . import db, calibre_db, ub, web_server, config, updater_thread, gdriveutils, \
-    kobo_sync_status, schedule
-from .helper import check_valid_domain, send_test_mail, reset_password, generate_password_hash, check_email, \
-    valid_email, check_username
+from . import db, calibre_db, ub, web_server, config, updater_thread, gdriveutils, kobo_sync_status, schedule
+from .helper import check_valid_domain, send_test_mail, reset_password, generate_password_hash, check_email, valid_email, check_username
 from .embed_helper import get_calibre_binarypath
 from .gdriveutils import is_gdrive_ready, gdrive_support
 from .render_template import render_title_template, get_sidebar_config
@@ -55,6 +53,7 @@ from .usermanagement import user_login_required
 from .cw_babel import get_available_translations, get_available_locale, get_user_locale_language
 from . import debug_info
 from .string_helper import strip_whitespaces
+from .web import web
 
 log = logger.create()
 
@@ -201,25 +200,31 @@ def update_thumbnails():
 
 
 def acw_get_package_versions() -> tuple[str, str, str, str]:
+    install_base_dir = os.environ.get("ACW_INSTALL_DIR", "/app")
+    acw_release_path = os.path.join(install_base_dir, "ACW_RELEASE")
+    kepubify_release_path = os.path.join(install_base_dir, "KEPUBIFY_RELEASE")
+    calibre_release_path = os.path.join(install_base_dir, "CALIBRE_RELEASE")
     try:
-        with open("/app/ACW_RELEASE", "r") as f:
+        with open(acw_release_path, "r") as f:
             acw_version = f.read()
     except Exception:
         acw_version = "Unknown"
 
     try:
-        with open("/app/KEPUBIFY_RELEASE", "r") as f:
+        with open(kepubify_release_path, "r") as f:
             kepubify_version = f.read()
     except Exception:
         kepubify_version = "Unknown"
 
     try:
-        with open("/app/CALIBRE_RELEASE", "r") as f:
+        with open(calibre_release_path, "r") as f:
             calibre_version = f.read()
     except Exception:
         calibre_version = "Unknown"
 
-    return acw_version, kepubify_version, calibre_version
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+    return acw_version, kepubify_version, calibre_version, python_version
 
 
 @admi.route("/admin/view")
@@ -227,7 +232,7 @@ def acw_get_package_versions() -> tuple[str, str, str, str]:
 @admin_required
 def admin():
     version = updater_thread.get_current_version_info()
-    acw_version, kepubify_version, calibre_version = acw_get_package_versions()
+    acw_version, kepubify_version, calibre_version, python_version = acw_get_package_versions()
     if version is False:
         commit = _('Unknown')
     else:
@@ -253,8 +258,9 @@ def admin():
 
     return render_title_template("admin.html", allUser=all_user, config=config, commit=commit,
                                  acw_version=acw_version, kepubify_version=kepubify_version,
-                                 calibre_version=calibre_version, feature_support=feature_support, 
-                                 schedule_time=schedule_time, schedule_duration=schedule_duration,
+                                 calibre_version=calibre_version, python_version=python_version, 
+								 feature_support=feature_support, schedule_time=schedule_time, 
+								 schedule_duration=schedule_duration,
                                  title=_("Admin page"), page="admin")
 
 
@@ -295,8 +301,8 @@ def ajax_db_config():
 @admi.route("/admin/alive", methods=["GET"])
 @user_login_required
 @admin_required
-def calibreweb_alive():
-    return "", 200
+def autocaliweb_alive():
+    return redirect(url_for('web.health_check'))
 
 
 @admi.route("/admin/viewconfig")
@@ -512,6 +518,8 @@ def edit_list_user(param):
                     user.kobo_plus = int(vals['value'] == 'true')
                 elif param == 'kobo_overdrive':
                     user.kobo_overdrive = int(vals['value'] == 'true')
+                elif param == 'kobo_instapaper':
+                    user.kobo_instapaper = int(vals['value'] == 'true')
                 elif param == 'kindle_mail':
                     user.kindle_mail = valid_email(vals['value']) if vals['value'] else ""
                 elif param.endswith('role'):
@@ -669,6 +677,8 @@ def load_dialogtexts(element_id):
         texts["main"] = _('Are you sure you want to change Kobo Plus behavior for the selected user(s)?')
     elif element_id == "kobo_overdrive":
         texts["main"] = _('Are you sure you want to change Overdrive behavior for the selected user(s)?')
+    elif element_id == "kobo_instapaper":
+        texts["main"] = _('Are you sure you want to change Instapaper Integration behavior for the selected user(s)?')
     elif element_id == "db_submit":
         texts["main"] = _('Are you sure you want to change Calibre library location?')
     elif element_id == "admin_refresh_cover_cache":
@@ -1195,6 +1205,11 @@ def _configuration_oauth_helper(to_save):
             element['oauth_client_id'] = to_save.get(client_id, "")
             element['oauth_client_secret'] = to_save.get(client_secret, "")
 
+        metadata_url = to_save.get("config_3_metadata_url", "")
+        if metadata_url != element.get('metadata_url', ""):
+            reboot_required = True
+            element['metadata_url'] = metadata_url
+
         if to_save.get(client_id) and to_save.get(client_secret):
             active_oauths += 1
             element["active"] = 1
@@ -1212,6 +1227,7 @@ def _configuration_oauth_helper(to_save):
                 "oauth_base_url": to_save.get("config_" + str(element['id']) + "_oauth_base_url", ""),
                 "oauth_auth_url": to_save.get("config_" + str(element['id']) + "_oauth_auth_url", ""),
                 "oauth_token_url": to_save.get("config_" + str(element['id']) + "_oauth_token_url", ""),
+                "oauth_userinfo_url": to_save.get("config_" + str(element['id']) + "_oauth_userinfo_url", ""),
                 "username_mapper": to_save.get("config_" + str(element['id']) + "_username_mapper", ""),
                 "email_mapper": to_save.get("config_" + str(element['id']) + "_email_mapper", ""),
                 "login_button": to_save.get("config_" + str(element['id']) + "_login_button", ""),
@@ -2027,6 +2043,7 @@ def _handle_new_user(to_save, content, languages, translations, kobo_support):
         content.kobo_only_shelves_sync = to_save.get("kobo_only_shelves_sync", 0) == "on"
         content.kobo_plus = to_save.get("kobo_plus", 0) == "on"
         content.kobo_overdrive = to_save.get("kobo_overdrive", 0) == "on"
+        content.kobo_instapaper = to_save.get("kobo_instapaper", 0) == "on"
         ub.session.add(content)
         ub.session.commit()
         flash(_("User '%(user)s' created", user=content.name), category="success")
@@ -2112,6 +2129,9 @@ def _handle_edit_user(to_save, content, languages, translations, kobo_support):
             kobo_sync_status.update_on_sync_shelfs(content.id)
         content.kobo_plus = int(to_save.get("kobo_plus") == "on") or 0
         content.kobo_overdrive = int(to_save.get("kobo_overdrive") == "on") or 0
+        content.kobo_instapaper = int(to_save.get("kobo_instapaper") == "on") or 0
+        content.auto_send_enabled = to_save.get("auto_send_enabled") == "on"
+        content.auto_metadata_fetch = to_save.get("auto_metadata_fetch") == "on"
         if to_save.get("default_language"):
             content.default_language = to_save["default_language"]
         if to_save.get("locale"):

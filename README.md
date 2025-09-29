@@ -1,10 +1,10 @@
-# Autocaliweb
+# ![Logo Light](https://github.com/gelbphoenix/autocaliweb/raw/refs/heads/main/cps/static/icon-light.svg) Autocaliweb
 
 Autocaliweb is a web app that offers a clean and intuitive interface for browsing, reading, and downloading eBooks using a valid [Calibre](https://calibre-ebook.com) database.
 
-[![License](https://img.shields.io/github/license/gelbphoenix/autocaliweb?style=flat-square)](https://github.com/gelbphoenix/autocaliweb/blob/master/LICENSE)
-![Version](https://img.shields.io/github/v/release/gelbphoenix/autocaliweb?display_name=release&style=flat-square&logo=github&color=%23008000)
-![Commit Activity](https://img.shields.io/github/commit-activity/w/gelbphoenix/autocaliweb?logo=github&style=flat-square&label=commits)
+[![License](https://img.shields.io/github/license/gelbphoenix/autocaliweb?style=flat-square)](https://github.com/gelbphoenix/autocaliweb/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/gelbphoenix/autocaliweb?display_name=release&style=flat-square&logo=github&color=%23008000)](https://github.com/gelbphoenix/autocaliweb/releases/latest/)
+[![Commit Activity](https://img.shields.io/github/commit-activity/w/gelbphoenix/autocaliweb?logo=github&style=flat-square&label=commits)](https://github.com/gelbphoenix/autocaliweb/commits/)
 [![Docker Pulls](https://img.shields.io/docker/pulls/gelbphoenix/autocaliweb?style=flat-square&logo=docker)](https://hub.docker.com/r/gelbphoenix/autocaliweb)
 
 <details>
@@ -14,7 +14,8 @@ Autocaliweb is a web app that offers a clean and intuitive interface for browsin
 2. [Features](#features)
 3. [Installation](#installation)
    - [Installation via Docker (recommended)](#installation-via-docker-recommended)
-   - [Manual-Installation - without Docker (on your own risk)](#manual-installation-without-docker-on-your-own-risk)
+   - [Manual installation without Docker (on your own risk)](#manual-installation-without-docker-on-your-own-risk)
+   - [Proxmox VE Script](#proxmox-ve-script)
    - [After Installation](#after-installation)
    - [Deploy Requirements](#deploy-requirements)
 4. [Troubleshooting](#troubleshooting)
@@ -57,22 +58,26 @@ _This software is a fork of [Calibre-Web](https://github.com/janeczku/calibre-we
 - Server Stats tracking
 - Easy theme switching
 - Batch edits of books
-- ISBNDB and Hardcover as additional providers for metadata
+- ISBNDB, Amazon JP and Hardcover as additional metadata providers
 - Syncing reading process to [Hardcover.app](https://hardcover.app/) (Only with Kobo E-Readers)
 - Split library support
 - Support for CLI compatible Calibre plugins
 - Support for syncing with the KOReader document viewer
 - Setting Automerge option
+- Automatically fetch metadata for newly added books
+- Automatically send new books to your E-Reader
 
 ### Features only in Autocaliweb
 
 - Usage of `DOCKER_MODS` from sources like linuxserver.io and others
 - Listing and caching of Author information and other books from Goodreads or Hardcover
-- User en- or disabling of the Kobo Sync and/or Overdrive tabs when using Kobo sync
+- User en- or disabling of the Kobo Sync and Overdrive tabs as well as the Instapaper integration when using Kobo sync
 - Support for custom OIDC providers (with support for /.well-known/openid-configuration)
 - Support for manual installation (without docker specific features)
-- Amazon Japan as metadata providers
-- Added a multi email selection for the Send eBooks to E-Readers function
+- LitRes as metadata provider
+- Multi email selection for the Send eBooks to E-Readers function
+- Management system for duplicate books
+- Generate generic covers for books
 
 ## Installation
 
@@ -83,7 +88,7 @@ _This software is a fork of [Calibre-Web](https://github.com/janeczku/calibre-we
 1. Download the Docker Compose template file to the folder where Autocaliweb should have it's data (e.g. /opt/autocaliweb) using the command below:
 
 ```
-curl -Lo ./docker-compose.yml https://raw.githubusercontent.com/gelbphoenix/autocaliweb/master/docker-compose.yml
+curl -Lo ./docker-compose.yml https://raw.githubusercontent.com/gelbphoenix/autocaliweb/main/docker-compose.yml
 ```
 
 2.  Edit the compose file using the comments to help, filling in your Timezone and desired binds
@@ -125,7 +130,7 @@ If you want to install Autocaliweb on your server without setting up Docker and 
 1. Download the `manual_install_acw.sh` file with the following command and check it:
 
 ```bash
-curl -Lo ./manual_install_acw.sh https://github.com/gelbphoenix/autocaliweb/raw/refs/heads/master/scripts/manual_install_acw.sh
+curl -Lo ./manual_install_acw.sh https://github.com/gelbphoenix/autocaliweb/raw/refs/heads/main/scripts/manual_install_acw.sh
 ```
 
 2. Make `manual_install_acw.sh` executeable and run it as root:
@@ -135,6 +140,48 @@ sudo chmod +x ./manual_install_acw.sh && sudo ./manual_install_acw.sh
 ```
 
 3. Follow now the next steps that are shown after install_autocaliweb run successfully
+
+### Proxmox VE Script
+
+> [!NOTE]
+> This script was created by and maintained by team of the [Proxmox VE Helper-Scripts](https://community-scripts.github.io/ProxmoxVE/). The page of the script is found [here](https://community-scripts.github.io/ProxmoxVE/scripts?id=autocaliweb) and support for the script is provided by that team.
+
+To install Autocaliweb on Proxmox VE you can also use this script from the Proxmox VE Helper-Scripts:
+
+<details>
+<summary>GitHub</summary>
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/autocaliweb.sh)"
+```
+
+</details>
+
+<details>
+<summary>Gitea (Look on the page for the script for when you have to use this link)</summary>
+
+```bash
+bash -c "$(curl -fsSL https://git.community-scripts.org/community-scripts/ProxmoxVE/raw/branch/main/ct/autocaliweb.sh)"
+```
+
+</details>
+
+You can (and generally should) check and understand external scripts.
+
+### Deploy Requirements
+
+#### For the deployment via docker
+
+- Docker version 27.5.1 (minimum)
+- Docker Compose version 2.33.1 (minimum)
+
+#### For the manual installation
+
+See the requirements [here](https://github.com/gelbphoenix/autocaliweb/wiki/Manual-Installation#prerequisites)
+
+#### For the [Proxmox VE Script](#proxmox-ve-script)
+
+- An updated Proxmox VE install
 
 ## After Installation
 
@@ -152,11 +199,6 @@ sudo chmod +x ./manual_install_acw.sh && sudo ./manual_install_acw.sh
 4. **Google Drive Integration**: For hosting your Calibre library on Google Drive, refer to the [Google Drive integration guide of Calibre-Web](https://github.com/janeczku/calibre-web/wiki/G-Drive-Setup#using-google-drive-integration).
 
 > [!IMPORTANT] > **If you are migrating from Calibre-Web Automated please ensure that your cwa.db is renamed acw.db before start to load your existing settings**
-
-## Deploy Requirements
-
-- Docker version 27.5.1 (minimum)
-- Docker Compose version 2.33.1 (minimum)
 
 ## Troubleshooting
 
@@ -184,7 +226,7 @@ Autocaliweb has an **not finished** documentation in the [wiki of this repositor
 
 ## Contributing to Autocaliweb
 
-To contribute, please check our [Contributing Guidelines](https://github.com/gelbphoenix/autocaliweb/blob/master/CONTRIBUTING.md). We welcome issues, feature requests, and pull requests from the community.
+To contribute, please check our [Contributing Guidelines](https://github.com/gelbphoenix/autocaliweb/blob/main/CONTRIBUTING.md). We welcome issues, feature requests, and pull requests from the community.
 
 ### Reporting Bugs
 
