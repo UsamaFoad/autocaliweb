@@ -18,6 +18,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_BREAK_SYSTEM_PACKAGES=1 \
     CALIBRE_DBPATH=/config \
+    CALIBRE_NO_DESKTOP_INTEGRATION=1 \
     UMASK=0002
 
 USER root
@@ -28,25 +29,23 @@ RUN useradd -u 911 -U -d /config -s /bin/false abc && \
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --fix-missing --no-install-recommends \
       build-essential libldap2-dev libsasl2-dev \
       curl python3-dev python3-pip \
       imagemagick ghostscript libldap-2.5-0 \
-      libmagic1 libsasl2-2 libxi6 \
-      libxslt1.1 python3-venv libxtst6 \
-      libxrandr2 libxkbfile1 libxcomposite1 \
-      libopengl0 libnss3 libxkbcommon0 \
-      libegl1 libxdamage1 libgl1 \
-      libglx-mesa0 xz-utils sqlite3 \
-      xdg-utils tzdata inotify-tools \
-      netcat-openbsd binutils zip \
-      fonts-dejavu-core
+      libmagic1 libsasl2-2 libxi6 libasound2 \
+      netcat-openbsd binutils zip fonts-dejavu-core && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# debug S6-Overlay url
+RUN echo "Downloading: https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz"
 
 # Install S6-Overlay
-RUN export S6_OVERLAY_VERSION=$(curl -s https://api.github.com/repos/just-containers/s6-overlay/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
-    curl -Lo /tmp/s6-overlay-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').tar.xz && \
-    curl -Lo /tmp/s6-overlay-noarch.tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz && \
-    tar -C / -Jxpf /tmp/s6-overlay-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').tar.xz && \
+RUN export S6_ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/') && \
+    export S6_OVERLAY_VERSION=$(curl -s https://api.github.com/repos/just-containers/s6-overlay/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
+    curl -fL -o /tmp/s6-overlay-${S6_ARCH}.tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz && \
+    curl -fL -o /tmp/s6-overlay-noarch.tar.xz https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz && \
+    tar -C / -Jxpf /tmp/s6-overlay-${S6_ARCH}.tar.xz && \
     tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
 
 ENV S6_STAGE2_HOOK=/docker-mods
@@ -87,8 +86,13 @@ RUN export KEPUBIFY_RELEASE=$(curl -s https://api.github.com/repos/pgaskin/kepub
     chmod +x /usr/bin/kepubify && \
     echo "$KEPUBIFY_RELEASE" >| /app/KEPUBIFY_RELEASE
 
+# Fix: Calibre's desktop integration attempt inside a container or CI environment, 
+# where system menu directories are typically unavailable. 
+RUN mkdir /usr/share/desktop-directories/
+
 # Install Calibre binaries
-RUN mkdir -p /app/calibre && \
+RUN export CALIBRE_NO_DESKTOP_INTEGRATION=1 && \
+mkdir -p /app/calibre && \
     CALIBRE_RELEASE=$(curl -s https://api.github.com/repos/kovidgoyal/calibre/releases/latest | awk -F'"' '/tag_name/{print $4;exit}') && \
     CALIBRE_VERSION=${CALIBRE_RELEASE#v} && \
     curl -o /tmp/calibre.txz -L https://download.calibre-ebook.com/${CALIBRE_VERSION}/calibre-${CALIBRE_VERSION}-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/').txz && \
